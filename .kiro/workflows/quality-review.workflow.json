@@ -1,0 +1,62 @@
+{
+  "name": "quality-review",
+  "description": "NecroAmp read-only quality review of the current branch: git diff and scope inspection, then independent architecture, security and QA reviews, then consolidated findings and verdict. Modifies no source and never commits, pushes, merges or publishes.",
+  "inputs": {
+    "run_label": "string",
+    "base_ref": "string"
+  },
+  "steps": [
+    {
+      "type": "step",
+      "id": "diff-scope",
+      "agent": "release-engineer",
+      "prompt": "Git diff and scope inspection for run {{run_label}} against base {{base_ref}}. Run each command on its own, with no pipes, chaining or redirection: git status --short, git log --oneline {{base_ref}}..HEAD, git diff --stat {{base_ref}}...HEAD, git diff {{base_ref}}...HEAD, git diff --stat. Do not run any other git command and no pnpm command. Write docs/release/review-{{run_label}}-diff-scope.md containing: changed files grouped by owning agent (per the write scopes in .kiro/agents), uncommitted changes, files outside any agent's scope, changes to .kiro/, steering, package.json, lockfiles, .github/workflows or electron-builder.yml, and the full diff in a fenced block (truncate files over 400 lines and say so). Do not commit, push, tag or publish. Final response: the report path and a short scope summary.",
+      "artifacts": {
+        "diff_scope": "docs/release/review-{{run_label}}-diff-scope.md"
+      }
+    },
+    {
+      "type": "parallel",
+      "id": "reviews",
+      "joinPolicy": "allSettled",
+      "branches": [
+        {
+          "type": "step",
+          "id": "architecture-review",
+          "agent": "necro-architect",
+          "prompt": "Architecture review for run {{run_label}}. Read {{artifacts.diff_scope}} and the changed files in the repository. Check module boundaries, dependency direction, naming and layout against structure.md and tech.md, and flag any silently resolved open decision. Do not edit source. Write findings with severity (blocker, major, minor) and owning agent to docs/architecture/review-{{run_label}}.md. Final response: the report path and the blocker count.",
+          "artifacts": {
+            "architecture_review": "docs/architecture/review-{{run_label}}.md"
+          }
+        },
+        {
+          "type": "step",
+          "id": "security-review",
+          "agent": "security-reviewer",
+          "prompt": "Security review for run {{run_label}}. Read {{artifacts.diff_scope}} and the changed files in the repository. Check Electron hardening, IPC validation and sender checks, contextBridge surface, CSP, filesystem and network boundaries, token handling, skin data-not-code rules, package script and dependency changes, and CI permissions and publish steps. Write findings with severity (blocker, major, minor) and owning agent to docs/security/review-{{run_label}}.md. Never reproduce a secret. Final response: the report path and the blocker count.",
+          "artifacts": {
+            "security_review": "docs/security/review-{{run_label}}.md"
+          }
+        },
+        {
+          "type": "step",
+          "id": "qa-review",
+          "agent": "qa-engineer",
+          "prompt": "QA review for run {{run_label}}. Read {{artifacts.diff_scope}} and the changed files in the repository. If package.json exists, run pnpm typecheck, pnpm lint and pnpm test where defined and record the results; otherwise record SKIPPED with the reason. Assess test coverage, required property tests and determinism against the Testing section of tech.md. Do not modify any file except your report. Write findings with severity (blocker, major, minor) and owning agent to docs/testing/review-{{run_label}}.md. Do not install dependencies. Final response: the report path and the blocker count.",
+          "artifacts": {
+            "qa_review": "docs/testing/review-{{run_label}}.md"
+          }
+        }
+      ]
+    },
+    {
+      "type": "step",
+      "id": "verdict",
+      "agent": "necro-architect",
+      "prompt": "Consolidated findings and verdict for run {{run_label}}. Read {{artifacts.diff_scope}}, {{artifacts.architecture_review}}, {{artifacts.security_review}} and {{artifacts.qa_review}}. Merge and deduplicate findings, keep severity, source report and owning agent, and choose one verdict: APPROVE, APPROVE WITH FIXES, or REJECT. Any blocker means REJECT. There is no correction loop; remediation is a separate feature-development run. Write the result to docs/architecture/review-{{run_label}}-verdict.md. Do not edit source, commit, push or merge. Final response: first line 'VERDICT: <verdict>', then the findings table and report paths.",
+      "artifacts": {
+        "verdict": "docs/architecture/review-{{run_label}}-verdict.md"
+      }
+    }
+  ]
+}

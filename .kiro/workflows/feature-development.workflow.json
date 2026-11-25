@@ -1,0 +1,118 @@
+{
+  "name": "feature-development",
+  "description": "NecroAmp feature delivery: requirements and architecture, human approval, domain-agent implementation, independent QA and security reviews, consolidated quality gate, at most one targeted correction, final human approval. Never commits, pushes, tags, merges or publishes. Use a new run_label for every run.",
+  "inputs": {
+    "feature": "prompt",
+    "run_label": "string"
+  },
+  "steps": [
+    {
+      "type": "step",
+      "id": "requirements-architecture",
+      "agent": "necro-architect",
+      "prompt": "Feature request: {{feature}}\nRun label: {{run_label}}\n\nWrite the requirements to docs/requirements/{{run_label}}.md and the architecture to docs/architecture/{{run_label}}.md. Add an ADR under docs/adr/ only if an architectural decision changes. Mark every open decision from structure.md as 'needs human decision'; do not resolve it.\n\nAssign exactly one implementation agent using this mapping: Web Audio, equalizer, analysis -> audio-engineer; main process, preload, IPC contracts, build config, package.json -> desktop-engineer; renderer UI, stores, skin loader -> frontend-engineer; GitHub features -> github-engineer; skin art, icons -> art-director; packaging, CI -> release-engineer. If the feature spans several domains, recommend splitting it into separate runs and assign only the first slice.\n\nDo not edit source, run commands, commit or push. Final response: a short summary, the two file paths, and a last line exactly 'DOMAIN AGENT: <agent-name>'.",
+      "artifacts": {
+        "requirements": "docs/requirements/{{run_label}}.md",
+        "architecture": "docs/architecture/{{run_label}}.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "approve-implementation",
+      "agent": "necro-architect",
+      "prompt": "Human approval gate before implementation. Read {{artifacts.requirements}} and {{artifacts.architecture}}. Proposed assignment from the previous step:\n\n{{requirements-architecture.output}}\n\nCall send_message with severity warning, summarizing scope, risks, open decisions and the proposed DOMAIN AGENT, and ask the human to approve, change the domain agent, or reject. Wait for the answer. Do not edit any file. If the human rejects, call send_message with severity error. If the human approves, call send_message with severity success. Final response: a last line exactly 'APPROVED DOMAIN AGENT: <agent-name>' with the agent the human approved."
+    },
+    {
+      "type": "repeat",
+      "id": "build-review-gate",
+      "maxIterations": 2,
+      "onMaxIterations": "continue",
+      "stopWhen": "{{quality-gate.output}} contains GATE: PASS",
+      "steps": [
+        {
+          "type": "parallel",
+          "id": "implementation",
+          "joinPolicy": "allSettled",
+          "branches": [
+            {
+              "type": "step",
+              "id": "implement-audio",
+              "agent": "audio-engineer",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not audio-engineer, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Run pnpm typecheck, pnpm lint and pnpm test only if package.json defines them. Do not commit, push, tag, merge, run gh, publish, read tokens or environment variables, or install dependencies without explicit human approval. Final response: changed files, commands run with results, and changes needed in files you do not own."
+            },
+            {
+              "type": "step",
+              "id": "implement-desktop",
+              "agent": "desktop-engineer",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not desktop-engineer, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Run pnpm typecheck, pnpm lint and pnpm test only if package.json defines them. Do not commit, push, tag, merge, run gh, publish, read tokens or environment variables, or install dependencies without explicit human approval. Final response: changed files, commands run with results, and changes needed in files you do not own."
+            },
+            {
+              "type": "step",
+              "id": "implement-frontend",
+              "agent": "frontend-engineer",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not frontend-engineer, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Run pnpm typecheck, pnpm lint and pnpm test only if package.json defines them. Do not commit, push, tag, merge, run gh, publish, read tokens or environment variables, or install dependencies without explicit human approval. Final response: changed files, commands run with results, and changes needed in files you do not own."
+            },
+            {
+              "type": "step",
+              "id": "implement-github",
+              "agent": "github-engineer",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not github-engineer, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Run pnpm typecheck, pnpm lint and pnpm test only if package.json defines them. Tests must use mocked or recorded responses, never a real token or network. Do not commit, push, tag, merge, run gh, publish, read tokens or environment variables, or install dependencies without explicit human approval. Final response: changed files, commands run with results, and changes needed in files you do not own."
+            },
+            {
+              "type": "step",
+              "id": "implement-art",
+              "agent": "art-director",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not art-director, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope, recording every asset's license in docs/assets.md. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Do not commit, push or publish. Final response: changed files and changes needed in files you do not own."
+            },
+            {
+              "type": "step",
+              "id": "implement-release",
+              "agent": "release-engineer",
+              "prompt": "Approval record:\n{{approve-implementation.output}}\n\nIf the APPROVED DOMAIN AGENT is not release-engineer, reply 'SKIPPED: not assigned' and stop without reading further or changing anything.\n\nOtherwise implement the approved design in {{artifacts.requirements}} and {{artifacts.architecture}} within your write scope. If docs/architecture/{{run_label}}-gate.md exists and begins with 'GATE: FAIL', this is the single correction pass: fix only the blockers listed there and nothing else. Keep build and packaging jobs at contents: read and --publish never. Do not create tags, commit, push, merge, run gh, publish, or read tokens or environment variables. Final response: changed files, commands run with results, every new or changed publish step, and changes needed in files you do not own."
+            }
+          ]
+        },
+        {
+          "type": "parallel",
+          "id": "independent-reviews",
+          "joinPolicy": "allSettled",
+          "branches": [
+            {
+              "type": "step",
+              "id": "qa-review",
+              "agent": "qa-engineer",
+              "prompt": "Independent QA review for run {{run_label}}. Read {{artifacts.requirements}}, {{artifacts.architecture}} and the files changed by the implementation step. Do not read the security review. If package.json exists, run pnpm typecheck, pnpm lint and pnpm test where defined and record the results; otherwise record SKIPPED with the reason. You may add tests under your write scope; never patch non-test source. Write findings with severity (blocker, major, minor) and acceptance-criteria traceability to docs/testing/{{run_label}}-review.md. Do not commit, push or install dependencies. Final response: the report path, the blocker count, and a one-paragraph summary.",
+              "artifacts": {
+                "qa_review": "docs/testing/{{run_label}}-review.md"
+              }
+            },
+            {
+              "type": "step",
+              "id": "security-review",
+              "agent": "security-reviewer",
+              "prompt": "Independent security review for run {{run_label}}. Read {{artifacts.requirements}}, {{artifacts.architecture}} and the files changed by the implementation step. Do not read the QA review. Check Electron hardening, IPC Zod validation and sender checks, contextBridge surface, CSP, filesystem and network boundaries, token handling, skin data-not-code rules and dependency changes against tech.md and product.md. Write findings with severity (blocker, major, minor) and the owning agent to docs/security/review-{{run_label}}.md. Never reproduce a secret. Final response: the report path, the blocker count, and a one-paragraph summary.",
+              "artifacts": {
+                "security_review": "docs/security/review-{{run_label}}.md"
+              }
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "quality-gate",
+          "agent": "necro-architect",
+          "prompt": "Consolidated quality gate for run {{run_label}}. Read {{artifacts.qa_review}} and {{artifacts.security_review}}. Merge their findings, remove duplicates, and keep each finding's severity, source report and owning agent. The gate passes only when no blocker remains. Write the result to docs/architecture/{{run_label}}-gate.md; its first line must be exactly 'GATE: PASS' or 'GATE: FAIL', followed by the blocker list that a single targeted correction must fix. Do not edit source. Final response: the first line must be exactly 'GATE: PASS' or 'GATE: FAIL'; never write the other token anywhere in the response.",
+          "artifacts": {
+            "gate": "docs/architecture/{{run_label}}-gate.md"
+          }
+        }
+      ]
+    },
+    {
+      "type": "step",
+      "id": "final-approval",
+      "agent": "necro-architect",
+      "prompt": "Final human approval for run {{run_label}}. Read {{artifacts.gate}}, {{artifacts.qa_review}} and {{artifacts.security_review}}. The correction cycle is capped at one pass; if the gate still fails, list the remaining blockers and recommend a new run rather than another loop. Call send_message with severity warning summarizing the gate result, remaining findings and changed files, and ask the human to approve or reject. Wait for the answer. Do not edit source, commit, push, merge or publish; integration stays with the human. If the human rejects, call send_message with severity error. If approved, call send_message with severity success. Final response: 'FINAL: APPROVED' or 'FINAL: REJECTED' with the reason."
+    }
+  ]
+}

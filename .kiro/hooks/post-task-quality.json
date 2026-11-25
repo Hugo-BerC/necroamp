@@ -1,0 +1,20 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "post-task-quality-typecheck",
+      "trigger": "PostTaskExec",
+      "action": { "type": "command", "command": "pnpm run --if-present typecheck" }
+    },
+    {
+      "name": "post-task-quality-lint",
+      "trigger": "PostTaskExec",
+      "action": { "type": "command", "command": "pnpm run --if-present lint" }
+    },
+    {
+      "name": "post-task-quality-test",
+      "trigger": "PostTaskExec",
+      "action": { "type": "command", "command": "pnpm run --if-present test" }
+    }
+  ]
+}
