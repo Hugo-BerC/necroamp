@@ -195,3 +195,21 @@ Skill workflows need a planned staging path from the start. Agent write scopes b
 ### Workflow artifact preservation
 - `.agents/` held only two workflow scratch files: `tasks/engineering-skills/review-gate.json` (stale initial gate) and `review-gate-final.json`. Both were copied, hash-identical, to `docs/engineering/reviews/review-gate-initial-stale.json` and `docs/engineering/reviews/review-gate-final.json`. Earlier documents that cite the `.agents/` paths refer to these copies.
 - `/.agents/` was added to `.gitignore`. `.kiro/` is not ignored.
+
+## 12. Phase 04: engineering automation (workflow `wf_6e76f1dad667f878`, branch `chore/engineering-automation`)
+
+### What was done
+- Stage 1: compatibility inspection and `docs/engineering/automation-design.md`. Hook format was read from the installed IDE 1.5.11 bundle (VERIFIED). No official doc page was fetched by the design author, so DOCUMENTED claims are absent there.
+- Stage 2: three reusable workflow recipes in `.kiro/workflows/`: `feature-development`, `quality-review`, `release-validation`. They use only the nine existing agents, with step prompts that forbid commit, push, tag, merge, publish and credential access.
+- Stage 3: two hook files in `.kiro/hooks/`: `post-task-quality` (three `PostTaskExec` command hooks, no model calls) and `ipc-security-check` (one `PostFileSave` agent hook, read-only prompt). `dependency-review` was deferred with reasons.
+- Stage 4: `docs/engineering/mcp-powers-evaluation.md`. Recommendation: Context7 only, pending explicit approval. GitHub MCP, Playwright MCP and Powers deferred. Nothing installed.
+- Stage 5: `automation-validation.md` and `automation-catalog.md`.
+
+### Kiro features used
+Workflows (recipes, parallel branches, bounded repeat, human approval via `send_message`), Agent Hooks, custom agents (as step assignees), Skills (referenced, not changed), MCP and Powers (evaluated only), steering (read only).
+
+### What it changed
+Added 5 config files and 4 docs. Agents, skills and steering are unchanged (empty git diff). No recipe was run, because no application code exists. No hook has fired in the IDE.
+
+### Limitations
+Recipe and hook syntax is VERIFIED only as valid JSON and against IDE-bundle evidence. IDE acceptance of the recipes was not tested in this step. `post-task-quality` fails silently without `package.json`. See `docs/engineering/automation-validation.md`.

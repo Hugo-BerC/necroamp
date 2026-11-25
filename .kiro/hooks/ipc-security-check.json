@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "ipc-security-check",
+      "trigger": "PostFileSave",
+      "matcher": "(^|[\\\\/])src[\\\\/](shared[\\\\/]ipc|preload)[\\\\/]",
+      "action": {
+        "type": "agent",
+        "prompt": "A file under src/shared/ipc or src/preload was saved. Do a read-only security review of that file only. Check: ipcRenderer or generic channel senders are not exposed through contextBridge; channel names come from constants in src/shared/ipc/channels.ts; every IPC payload is validated with a Zod schema in the receiving process; privileged handlers validate the sender; contextIsolation, sandbox and nodeIntegration settings are not weakened. Report findings in chat as a short list with file and line. Do not edit or create files, do not install dependencies, do not run git commands, and do not run shell commands. If the file is not relevant, reply with one line saying so."
+      }
+    }
+  ]
+}

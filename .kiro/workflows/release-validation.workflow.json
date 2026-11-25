@@ -1,0 +1,63 @@
+{
+  "name": "release-validation",
+  "description": "NecroAmp release readiness check: build verification, automated test results, dependency and license review, cross-platform packaging validation, artifact verification, human approval. Never tags, pushes, uploads, publishes or reads publishing credentials; release publication stays a human action outside this workflow.",
+  "inputs": {
+    "run_label": "string"
+  },
+  "steps": [
+    {
+      "type": "step",
+      "id": "build-verification",
+      "agent": "release-engineer",
+      "prompt": "Build verification for run {{run_label}}. If package.json does not exist, record SKIPPED with the reason and run nothing. Otherwise read every package.json script including pre* and post* hooks first; refuse and report if any script publishes, pushes, tags, calls gh or curl, or reads tokens. Then run pnpm build once. Write the command, exit status, warnings and output locations to docs/release/validation-{{run_label}}-build.md. Do not install dependencies, tag, push or publish. Final response: report path and PASS, FAIL or SKIPPED.",
+      "artifacts": {
+        "build": "docs/release/validation-{{run_label}}-build.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "test-results",
+      "agent": "qa-engineer",
+      "prompt": "Automated test results for run {{run_label}}. Build result: {{artifacts.build}}. If package.json does not exist, record SKIPPED with the reason. Otherwise run pnpm typecheck, pnpm lint, pnpm test and pnpm test:e2e where defined, each once, and record pass and fail counts and failing test names. Do not modify source or tests and do not install dependencies. Write the results to docs/testing/release-{{run_label}}.md. Final response: report path and PASS, FAIL or SKIPPED.",
+      "artifacts": {
+        "tests": "docs/testing/release-{{run_label}}.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "dependency-license-review",
+      "agent": "security-reviewer",
+      "prompt": "Dependency and license review for run {{run_label}}. Read package.json, pnpm-lock.yaml, pnpm-workspace.yaml if present, docs/assets.md and LICENSE. If package.json does not exist, record SKIPPED for dependencies and still review docs/assets.md. Check for unlicensed or copyleft-incompatible runtime dependencies, install scripts, unpinned or git or URL dependencies, and bundled assets without a recorded license. You have no shell, so state that no audit tool was run. Write findings to docs/security/release-deps-{{run_label}}.md. Final response: report path and PASS, FAIL or SKIPPED.",
+      "artifacts": {
+        "dependencies": "docs/security/release-deps-{{run_label}}.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "packaging-validation",
+      "agent": "release-engineer",
+      "prompt": "Cross-platform packaging validation for run {{run_label}}. Read electron-builder.yml and .github/workflows/**. Check: Windows x64, macOS arm64 and x64, Linux DEB and AppImage targets; native runners per OS; pnpm install --frozen-lockfile; third-party Actions pinned by full commit SHA; least-privilege permissions with contents: read on build jobs; no active publish provider for local runs; publication only on a maintainer-pushed tag. If package.json or electron-builder.yml does not exist, record SKIPPED for the local package run. Otherwise confirm the package script contains --publish never, then run pnpm package once for the host platform only. Do not run electron-builder directly, tag, push or publish. Write results to docs/release/validation-{{run_label}}-packaging.md. Final response: report path and PASS, FAIL or SKIPPED.",
+      "artifacts": {
+        "packaging": "docs/release/validation-{{run_label}}-packaging.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "artifact-verification",
+      "agent": "release-engineer",
+      "prompt": "Artifact verification for run {{run_label}}. Read {{artifacts.packaging}} and inspect the output directory it names. List each artifact with name, target platform and size, and note SBOM and checksum files if present. Checksum computation is outside your shell allow-list: mark hashes as not computed unless checksum files already exist. Mark platforms that cannot be built on this host as not verified locally. If no artifacts exist, record SKIPPED with the reason. Do not upload, tag, push or publish. Write results to docs/release/validation-{{run_label}}-artifacts.md. Final response: report path and PASS, FAIL or SKIPPED.",
+      "artifacts": {
+        "release_artifacts": "docs/release/validation-{{run_label}}-artifacts.md"
+      }
+    },
+    {
+      "type": "step",
+      "id": "human-approval",
+      "agent": "release-engineer",
+      "prompt": "Human approval for run {{run_label}}. Read {{artifacts.build}}, {{artifacts.tests}}, {{artifacts.dependencies}}, {{artifacts.packaging}} and {{artifacts.release_artifacts}}. Write a decision summary listing each check as PASS, FAIL or SKIPPED with its report path to docs/release/validation-{{run_label}}-decision.md. Call send_message with severity warning presenting that summary and asking the human to approve or reject release readiness. Wait for the answer and record it in the same file. Approval here does not authorize a tag, push, upload or publish; those remain human actions outside this workflow, and you must not perform them. If rejected, call send_message with severity error; if approved, severity success. Final response: 'RELEASE READINESS: APPROVED' or 'RELEASE READINESS: REJECTED' and the decision file path.",
+      "artifacts": {
+        "decision": "docs/release/validation-{{run_label}}-decision.md"
+      }
+    }
+  ]
+}
