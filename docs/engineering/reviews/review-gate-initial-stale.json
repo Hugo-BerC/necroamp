@@ -1,0 +1,12 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {"id": "S-1", "file": "github-integration and typescript-standards skills (SKILL.md, not found anywhere in the repository)", "requiredFix": "Author both skills (staging is acceptable) so that all seven exist, then re-submit for review."},
+    {"id": "S-2", "file": ".kiro/skills/", "requiredFix": "Copy the staged skills, with their references/ folders, from docs/*/skills-staging/<name>/ to the confirmed skill location so Kiro discovers them."},
+    {"id": "S-3", "file": ".kiro/agents/*.md and .agents/tasks/engineering-skills/integration-report.md", "requiredFix": "Apply the design section 6 agent edits (skill:// resources, append only, no tool or permission widening) and write integration-report.md."},
+    {"id": "S-4", "file": ".agents/tasks/engineering-skills/skill-design.md and integration-report.md", "requiredFix": "Provide both artifacts at the requested paths, or confirm docs/architecture/engineering-skills-design.md as the substitute."},
+    {"id": "Q-MISSING", "file": ".agents/tasks/engineering-skills/qa-review.json and docs/engineering/reviews/skills-qa-review.md", "requiredFix": "Run the QA review and write both files. A missing review counts as CHANGES_REQUESTED."},
+    {"id": "S-JSON-MISSING", "file": ".agents/tasks/engineering-skills/security-review.json", "requiredFix": "Write the verdict file at the requested path. The security agent could not, and its intended content is in section 6 of docs/security/skills-review.md."}
+  ],
+  "reviewDoc": "c:/Users/hberm/Desktop/necroamp/docs/security/skills-review.md"
+}

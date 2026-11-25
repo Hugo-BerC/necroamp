@@ -6,6 +6,9 @@ includeMcpJson: false
 includePowers: false
 resources:
   - file://.kiro/steering/**/*.md
+  - skill://.kiro/skills/cross-platform-packaging/SKILL.md
+  - skill://.kiro/skills/electron-security/SKILL.md
+  - skill://.kiro/skills/testing-strategy/SKILL.md
 permissions:
   rules:
     - capability: mcp

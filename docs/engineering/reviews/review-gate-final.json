@@ -1,0 +1,23 @@
+{
+  "verdict": "APPROVED",
+  "findings": [],
+  "nonBlocking": [
+    {"id": "F1", "severity": "Medium", "source": "security", "file": ".kiro/skills/electron-security (procedure 6, references/credential-storage-notes.md)", "note": "Linux safeStorage may report encryption available while using a plaintext-style backend. Add a selected-backend check and a test; close via the ADR for open decision 3. ASSUMED from recollection of Electron docs.", "owner": "desktop-engineer"},
+    {"id": "A1", "severity": "Medium", "source": "qa", "file": ".kiro/agents/*.md", "note": "Not shown that agents load only their mapped skills. Run the manual activation test (select each agent, ask which skills it sees) and record results in docs/kiroween/kiro-journal.md. If agents inherit all workspace skills, say so in docs/engineering/skill-catalog.md.", "owner": "necro-architect or human"},
+    {"id": "F2", "severity": "Low", "source": "security", "file": ".kiro/agents/*.md, .kiro/skills/*/SKILL.md", "note": "Security review ran no YAML parser. QA ran PyYAML on all 7 skills and 9 agents and it passed, so this is largely closed.", "owner": "release-engineer"},
+    {"id": "F3", "severity": "Low", "source": "security", "file": "docs/*/skills-staging", "note": "Staging copies can drift from .kiro/skills. Remove or mark them as non-authoritative.", "owner": "necro-architect or human"},
+    {"id": "F4", "severity": "Low", "source": "security", "file": ".kiro/skills/audio-processing/SKILL.md", "note": "Preamp placement is unspecified and may add a node beyond the tech.md graph.", "owner": "audio-engineer"},
+    {"id": "F5/A5", "severity": "Low", "source": "both", "file": ".kiro/skills/github-integration/SKILL.md", "note": "Link to electron-security credential notes only works if an agent holds both skills. The relative path breaks if the skill is copied alone to another client.", "owner": "necro-architect"},
+    {"id": "F6", "severity": "Info", "source": "security", "file": ".kiro/skills/electron-security, github-integration, typescript-standards", "note": "Written by wf-coder. Owner agents should read them once.", "owner": "desktop-engineer, github-engineer, frontend-engineer"},
+    {"id": "A2", "severity": "Low", "source": "qa", "file": ".kiro/agents/qa-engineer.md, security-reviewer.md", "note": "Body text 'Do not invent Skills...' could be read as a reason to ignore the new skills. Integration report reads it as 'do not fabricate'.", "owner": "necro-architect"},
+    {"id": "A3", "severity": "Low", "source": "qa", "file": ".kiro/skills/github-integration, typescript-standards", "note": "Skills name other skills their agents are not mapped to (testing-strategy, audio-processing, github-integration). Name references only.", "owner": "necro-architect"},
+    {"id": "A4", "severity": "Low", "source": "qa", "file": ".kiro/agents/audio-engineer.md", "note": "audio-engineer is not mapped to electron-security. Acceptable because the skill delegates.", "owner": "necro-architect"},
+    {"id": "A7", "severity": "Low", "source": "qa", "file": ".kiro/skills/electron-security", "note": "No mention of privileged custom-scheme registration flags. Add when the protocol is implemented.", "owner": "desktop-engineer"},
+    {"id": "A8", "severity": "Low", "source": "qa", "file": ".kiro/skills/audio-processing/references/equalizer-and-dsp-notes.md", "note": "Invariant 7 fails when Nyquist is below 20 Hz. Restrict property-test sample rates (e.g. 8000 to 192000).", "owner": "audio-engineer, qa-engineer"},
+    {"id": "A9", "severity": "Low", "source": "qa", "file": ".kiro/skills/cross-platform-packaging/references/ci-matrix-and-verification.md", "note": "macOS x64 cross-build on Apple silicon is not proven to produce a launchable binary. Verify on a native x64 runner or with an architecture check plus launch smoke.", "owner": "release-engineer"},
+    {"id": "A10", "severity": "Info", "source": "qa", "file": ".kiro/skills/typescript-standards", "note": "Broadest description; may activate on most TypeScript edits.", "owner": "none"},
+    {"id": "A11", "severity": "Info", "source": "qa", "file": ".kiro/skills/skin-development", "note": "Stricter than tech.md and consistent with it. No action.", "owner": "none"},
+    {"id": "GAP-1", "severity": "Info", "source": "aggregation", "file": "docs/security/skills-review-final.md", "note": "Security final output states it read two of 21 reference files in full; QA read five and keyword-searched others. The remaining reference files were not read line by line by either reviewer. testing-strategy was reviewed by security only; QA excluded it as author."}
+  ],
+  "reviewDoc": "c:/Users/hberm/Desktop/necroamp/docs/security/skills-review-final.md"
+}
