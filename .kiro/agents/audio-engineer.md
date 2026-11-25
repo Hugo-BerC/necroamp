@@ -6,6 +6,8 @@ includeMcpJson: false
 includePowers: false
 resources:
   - file://.kiro/steering/**/*.md
+  - skill://.kiro/skills/audio-processing/SKILL.md
+  - skill://.kiro/skills/typescript-standards/SKILL.md
 permissions:
   rules:
     - capability: mcp

@@ -141,3 +141,57 @@ Future workflows must capture meaningful agent results through structured final 
 - Phase 02: conditionally approved by the human (section 9). Manual smoke tests (section 8) are still not run.
 - Phase 02 files are committed on branch `chore/custom-engineering-agents` with a pull request to `main` (see the PR). The PR is not merged. Human approval is required before merging.
 - Kiro feature usage still to document for the write-up (steering, agents, workflow): session logs and prompts not recorded. Hooks, specs and MCP: none exist.
+## 11. Phase 03: engineering skills (workflow `wf_3289f58996624e25`)
+Sources: `docs/architecture/*` (design, integration report, copy evidence, final check, correction report), `docs/security/skills-review-final.md`, `docs/testing/skills-qa-review-final.md`, `.agents/tasks/engineering-skills/review-gate-final.json`, `docs/engineering/skill-catalog.md`, `docs/engineering/skills-staging-inventory.md`. Dates: not recorded. Nothing was committed.
+### Workflow
+- Native workflow "NecroAmp - Engineering Skills Setup", id `wf_3289f58996624e25` (Prompt; no workflow definition or run log in the repo). Its stages, as named in the repo documents: Stage 1 skill design (necro-architect, `engineering-skills-design.md`), Stage 2 skill authoring by owner agents, Stage 3 agent integration (`skill-integration-report.md`), Stage 4 independent review, Stage 5 catalog and journal. The exact step names in the workflow definition: **not recorded**.
+- Result: seven skills in `.kiro/skills/` (audio-processing, skin-development, testing-strategy, cross-platform-packaging, electron-security, github-integration, typescript-standards), 28 files. Evidence: directory listing.
+### Permission-related integration failure
+- Every custom agent has an `fs_write` deny on `.kiro/**`, and deny wins over allow. No agent could write `.kiro/skills/` or edit `.kiro/agents/`. The design flagged this as B-1 and B-2 before Stage 2. Evidence: `engineering-skills-design.md`, `skills-correction-report.md`.
+- Most `docs/` paths were also outside each agent's write scope. Authors staged skills under their own scopes (`docs/audio/`, `docs/design/`, `docs/testing/`, `docs/release/`) or returned text inline. Four skills were staged by their owners. electron-security, github-integration and typescript-standards could not be written by desktop-engineer, github-engineer or frontend-engineer.
+- necro-architect had no shell, and its correction step could not copy or edit anything. `skills-correction-report.md` records the blocked state: S-1 (two skills missing), S-2 (no `.kiro/skills/`), S-3 (no agent edits).
+- The first review pass ran in this state. Its security report (`skills-review.md`) and gate (`review-gate.json`) returned CHANGES_REQUESTED. Every blocker was a missing file (S-1 to S-4, Q-MISSING, S-JSON-MISSING). Both are stale and superseded.
+### Authorized orchestrator recovery
+- The human authorized limited configuration integration by an unrestricted run. Agent permissions and deny rules were not widened (Prompt).
+- wf-coder run `wf_8f7b43c34040e187` authored electron-security, github-integration and typescript-standards, copied all seven skills to `.kiro/skills/` and added the 33 `skill://` lines to the nine agent files. Evidence: `skill-copy-evidence.md`. The human accepted wf-coder as the actual author of those three skills.
+- Orchestrator final check (`skill-final-integration-check.md`), VERIFIED by `git diff`: the 33 lines equal section 3 of the integration report per agent (7+3+2+3+1+3+4+7+3); 0 lines removed, so `tools`, `permissions.rules`, `includeMcpJson` and `includePowers` are unchanged; every target exists.
+- Cross-skill reference fix: `github-integration/SKILL.md` pointed to `references/credential-storage-notes.md`, which lives in electron-security. It now names `.kiro/skills/electron-security/references/credential-storage-notes.md` explicitly.
+- Result of the `skill://` form: DOCUMENTED on kiro.dev (explicit paths supported in `resources`). Not tested per agent.
+### Independent review
+- Final reviews, one pass each. Neither reviewer approved its own deliverable: security-reviewer reviewed all seven, including testing-strategy (authored by qa-engineer); qa-engineer reviewed six and excluded testing-strategy.
+- Security: approved, no blocking findings, 6 non-blocking findings (F1 to F6). Evidence: `skills-review-final.md`.
+- QA: approved, no blocking findings, advisory findings A1 to A9 plus informational A10 and A11. QA also ran PyYAML on all 7 skills and 9 agents, which passed. Evidence: `skills-qa-review-final.md`.
+- Gate: **APPROVED**, `findings: []`. Evidence: `review-gate-final.json`.
+- Non-blocking IDs in the gate file: F1, A1, F2, F3, F4, F5/A5, F6, A2, A3, A4, A7, A8, A9, A10, A11, GAP-1. (A6 duplicates F1 and A5 duplicates F5, so the gate file merges them.)
+- Notable ones: F1 Linux `safeStorage` may report encryption available while using a weak backend (Medium, needs the ADR for open decision 3); A1 per-agent skill visibility untested (Medium); F3 staging copies can drift; A8 EQ invariant 7 fails below 40 Hz sample rate; A9 macOS x64 cross-build unproven.
+- GAP-1: neither reviewer read most of the 21 reference files line by line.
+### IDE discovery
+- VERIFIED: all seven skills and their descriptions appear in the Kiro IDE resource catalog of the orchestrator session. Evidence: `skill-final-integration-check.md`.
+- Staging comparison (`skills-staging-inventory.md`): 28 staging files, 27 byte-identical to `.kiro/skills/`, 1 differs (the pre-fix github-integration wording), none staging-only. No staging directory has unique content. None was deleted.
+### Remaining limitations
+- UNVERIFIED: that each custom agent sees only its mapped skills (A1). The manual activation test in `docs/engineering/skill-catalog.md` section 7 has not been run, so no per-agent result is recorded. If agents inherit all workspace skills, the 33 lines only document intent.
+- UNVERIFIED: `skill://` entries in Markdown agent files on Kiro IDE 1.5.11 per agent.
+- Open non-blocking findings stay open, including F1 (Linux `safeStorage` weak-backend check) and F6 (the three wf-coder skills have not been read by their owner agents).
+- `.kiro/skills/`, the nine edited agent files and the staging directories are uncommitted.
+### Lesson learned
+Skill workflows need a planned staging path from the start. Agent write scopes block `.kiro/**` and most `docs/` paths, so each author needs a writable staging location, and a named orchestrator step with the needed permission must copy the result and edit the agent files. Otherwise authors stage ad hoc or return inline text, reviews run on missing files and the loop stalls. Capture results in structured outputs or files, as in section 10.
+
+### Closure (human-approved, top-level orchestrator)
+- Phase 03 approved by the human, subject to completing the documentation. No new workflow was launched and no review was repeated.
+- Staging copies: removed after the equivalence check. This supersedes "None was deleted" above. The only differing file was the superseded pre-fix github-integration wording, recorded in `docs/architecture/skill-final-integration-check.md`. No unique evidence was lost.
+- Cross-skill reference: github-integration now names the electron-security dependency explicitly (`.kiro/skills/electron-security/references/credential-storage-notes.md`).
+- Linux credential storage: decided fail closed in `docs/adr/0001-linux-credential-storage-fail-closed.md`. `basic_text` and `unknown` backends count as unavailable, and the session is memory-only with no plaintext fallback (DOCUMENTED against the Electron safeStorage API docs). The text in electron-security and github-integration now points to the ADR. structure.md still lists decision 3 as open because steering was not modified.
+- Backlog: all 16 non-blocking gate entries are recorded in `docs/engineering/backlog.md`.
+- Preserved: 7 skills, 33 `skill://` bindings, unchanged agent tools and permissions, unchanged steering (VERIFIED by git diff).
+- Not performed: the manual activation test (A1) and any runtime test. No test result is claimed.
+
+### Skill activation smoke tests (default Kiro agent, orchestrator session)
+- electron-security: explicit activation through `skill::electron-security` succeeded. The agent loaded `SKILL.md` and then only `references/ipc-channel-checklist.md` to explain secure IPC channels with Zod validation (VERIFIED).
+- audio-processing: contextual selection succeeded. The agent chose `skill::audio-processing` from its activation description for a ten-band equalizer design task and loaded it, then only `references/equalizer-and-dsp-notes.md` and `references/graph-and-lifecycle.md` (VERIFIED).
+- Selective reference loading worked in both tests. Unrelated reference files were not loaded.
+- Both tests were read-only and ran without workflows.
+- Limitations: both tests ran in the same session, so context isolation and IDE-driven automatic activation (without the agent's own selection) are UNVERIFIED. Agent-specific skill inheritance (backlog A1) is still open. The default agent's runtime catalog listed all seven workspace skills, with none explicitly assigned. No custom agent was tested.
+
+### Workflow artifact preservation
+- `.agents/` held only two workflow scratch files: `tasks/engineering-skills/review-gate.json` (stale initial gate) and `review-gate-final.json`. Both were copied, hash-identical, to `docs/engineering/reviews/review-gate-initial-stale.json` and `docs/engineering/reviews/review-gate-final.json`. Earlier documents that cite the `.agents/` paths refer to these copies.
+- `/.agents/` was added to `.gitignore`. `.kiro/` is not ignored.
