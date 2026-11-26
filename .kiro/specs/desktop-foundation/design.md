@@ -51,11 +51,12 @@ necroamp/
 │  │  ├─ index.html, main.tsx, env.d.ts          (frontend-engineer; top-level files)
 │  │  ├─ app/
 │  │  │  ├─ app-shell.tsx, shell-layout.ts       layout descriptor, region ids
+│  │  │  ├─ use-app-info.ts                      useAppInfo hook binding the real client
 │  │  │  ├─ bridge/necroamp-client.ts            THE adapter around window.necroamp (R4.9)
 │  │  │  ├─ strings/en.ts                        all user-facing strings (D14)
 │  │  │  ├─ styles/{tokens.css,global.css}       CSS custom properties (R8.13)
 │  │  │  └─ theme/contrast.ts                    PURE contrast ratio functions
-│  │  ├─ features/{player,playlist,equalizer,visualization,skin-selector,github}/
+│  │  ├─ features/{player,playlist,equalizer,visualizer,skins,github}/   (region ids stay visualization and skin-selector)
 │  │  │     index.ts (public), <name>-region.tsx (container), <name>-view.tsx (presentational),
 │  │  │     use-<name>.ts (headless behavior), <name>-view.module.css
 │  │  ├─ stores/app-info-store.ts                Zustand, injected client

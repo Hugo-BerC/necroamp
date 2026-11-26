@@ -54,3 +54,15 @@ A contract change note is required for a shared contract change that does not me
 - **VERIFIED:** the table in section 1 matches the `fs_write` allow and deny lists in the agent files. The existing five `src/shared/` scopes are disjoint, and none covers the unassigned paths. One exception: qa-engineer's `**/*.property.test.ts` and `**/*.integration.test.ts` patterns also match files under the unassigned `src/shared/` paths. It may write those test files only, not source. Plain `*.test.ts` files next to shared code have no agent owner.
 - **DOCUMENTED (Kiro):** deny rules override allow rules. Each agent ends with a `**` write deny outside its scope, so no agent can write unassigned `src/shared/` source files.
 - **ASSUMED:** consultation, review, ADR and note requirements are instructions in agent prompts. Kiro does not enforce them. Human review of the diff is the actual control.
+
+## 5. Cross-cutting tooling and configuration files (post-merge reconciliation, finding V-2)
+
+Owner: the **top-level orchestrator** (the main session, per design decision D13). No custom agent owns these files and no agent permission is widened.
+
+Paths: `eslint.config.mjs`, `prettier.config.mjs`, `.npmrc`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.editorconfig`, `.gitattributes`, `.prettierignore`, `.gitignore`, and similar repository-wide tooling files that no agent write scope claims.
+
+Rules:
+- **necro-architect review is required** for any change to dependency-boundary rules, for example `no-restricted-imports` zones in `eslint.config.mjs` that encode the dependency direction in `structure.md`.
+- `pnpm-lock.yaml` changes only through `pnpm install` after the dependency approval gate in the Spec (design section 14). `.npmrc` and `pnpm-workspace.yaml` follow `docs/adr/0004-dependency-lifecycle-script-policy.md`.
+- security-reviewer reviews changes to lifecycle-script policy files.
+- This is an ownership record. The human has not yet confirmed this assignment; it was recorded by the orchestrator before the merge and is re-recorded here for human review.

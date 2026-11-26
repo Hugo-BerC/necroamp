@@ -68,3 +68,21 @@ F-1 and F-2 are corrected in code with regression tests (accepted by the human).
 - F-7 and all packaging-specific checks (fuses, ASAR integrity, ealpath on the ASAR layout, production devTools, installers, signing, auto-update, Linux targets, macOS x64 cross-build): DEFERRED.
 - No CI exists (.github/workflows is absent). Add the CI workflow (including YAML lint, F2) before release.
 - Open items from the final delivery: T5.5 seam review, T7.5 build validation document, T8.1 to T8.4 reviews, manual skill activation test (A1).
+
+## Desktop Foundation quality findings: unresolved items (post-merge reconciliation)
+Source: `docs/architecture/review-desktop-foundation-final-dispositions.md`. Open items from the final quality review (V-IDs) and the architecture gate (A-IDs, `docs/architecture/desktop-foundation-architecture-gate.md`).
+| ID | Owner | Item | Trigger |
+|---|---|---|---|
+| V-4 | release-engineer, security-reviewer | Fuses, ASAR integrity, `electron-builder.yml`, F-3 reassessment. | Before first packaging or public release. |
+| V-5 | release-engineer | Add CI (matrix, SHA-pinned actions, least-privilege `permissions:`, `--frozen-lockfile`, YAML lint). Verify macOS and Linux install, build, unit and E2E. | Next phase. |
+| V-6 | desktop-engineer | Navigation guards: allow only the entry URL, not any same-origin URL. | When routing or the Skin Engine adds origins. |
+| V-8 | desktop-engineer, release-engineer | Add `package` script with `--publish never`. | When `electron-builder.yml` exists. |
+| V-10 | desktop-engineer, frontend-engineer | Move the `window.necroamp` ambient declaration so renderer does not include preload. | Next renderer or preload change. |
+| V-12 | qa-engineer | Run the two skipped real-symlink tests on Linux, macOS or Developer Mode Windows. | With CI. |
+| V-13 | qa-engineer, art-director | Visual snapshot baselines per platform. | After art-director approval of a baseline. |
+| V-15 | qa-engineer | Audio decode tests (MP3, WAV, FLAC, OGG) and property tests (equalizer, skin manifest, playlist, metadata, time formatting). | Mandatory when each feature lands. |
+| V-16 | orchestrator, security-reviewer | Create `docs/assets.md` and list the screenshot. | Before any bundled asset is added. |
+| V-2 | human | Confirm the tooling ownership assignment (`shared-ownership-policy.md` section 5). | Next human review. |
+| T8.6 | human | No human confirmation of the Desktop Foundation final approval exists. Decide whether to give one. | Before relying on Desktop Foundation as accepted. |
+| A-1, A-3, A-4 | necro-architect | Documentation drift items from the architecture gate (ADR 0005 F-5 addendum; steering open decisions 1, 8, 9 still marked open). | Next steering or ADR edit. |
+| A1 | human | Manual agent-skill activation test (carried from Phase 03). | Open. |

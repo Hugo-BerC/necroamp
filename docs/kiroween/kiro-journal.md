@@ -263,4 +263,3 @@ Incident record, correction of false approval claims, hook evidence, E-ESM-1 tec
 A coding subagent in a workflow step, directed by the orchestrator. No custom agent, no permission change.
 ### Notable decision
 The merge was not reverted. The human asked for a limited reconciliation and a PR that is not merged automatically.
-
