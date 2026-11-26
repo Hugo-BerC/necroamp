@@ -1,6 +1,6 @@
 # Desktop Foundation: development runtime validation (T7.6)
 
-Status: automated validation PASSED on Windows x64. T7.6 stays PENDING because the Spec requires a human-run `pnpm dev`. See "Pending confirmation".
+Status: automated validation PASSED on Windows x64. The human ACCEPTED this automated evidence in place of a human-run `pnpm dev`, so T7.6 and T7.7 are COMPLETE (Windows x64 only).
 
 ## Environment
 
@@ -75,6 +75,6 @@ After the HMR run (checked again after 25 s, because the process tree takes a fe
 - No human observed the window or its visual state. Window presence is inferred from CDP (title, DOM, bridge).
 - Console messages from the very first load, before the harness attached, were not captured. Coverage starts at the reload.
 
-## Pending confirmation
+## Human acceptance
 
-The T7.6 task text says a human runs `pnpm dev`, confirms the window appears, and closes it. One confirmation closes T7.6 and then T7.7: the human runs `pnpm.cmd dev`, sees the NecroAmp window, and closes it, or explicitly accepts this automated run in place of that step.
+The T7.6 task text says a human runs `pnpm dev`. The human explicitly accepted the recorded automated development runtime, HMR and CSP evidence in its place. No human observed the window. Dev `unsafe-inline` allowances for script and style are retained, production CSP is unchanged, and there is no `unsafe-eval`. macOS and Linux are NOT VERIFIED and GitHub CI is ABSENT.

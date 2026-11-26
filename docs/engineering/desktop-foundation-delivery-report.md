@@ -107,3 +107,8 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 - V-1: the E-ESM-1 edit to `.kiro/steering/tech.md` was approved by the human earlier.
 - V-2: the authorized top-level orchestrator owns the unowned tooling and config files. No permission widening.
 - T8.5 and T8.6 PENDING. Not merged.
+
+## Update: T7.6 and T7.7 closed
+
+- The human accepted the automated dev runtime, HMR and CSP evidence in place of a human-run `pnpm dev`. T7.6 COMPLETE, T7.7 COMPLETE (Windows x64 only). Dev `unsafe-inline` retained, production CSP unchanged, no `unsafe-eval`. macOS and Linux NOT VERIFIED, GitHub CI ABSENT.
+- Remaining: T8.5 (hooks confirmation) and T8.6 (merge approval). Not merged. This update supersedes the earlier T7.6 and T7.7 PENDING statements above.
