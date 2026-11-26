@@ -24,3 +24,8 @@ Nothing below has been executed. No Electron runtime, packaged build or E2E run 
 - F-4, F-7, F-8 downstream validation: table in docs/engineering/backlog.md.
 - Optional S-1 hardening (rame === sender.mainFrame) and a sub-frame or foreign-origin negative E2E for the sender check: no task exists today. Human decision.
 - Status: M2 and M3 are IMPLEMENTED - INTEGRATION PENDING.
+
+## Update after Block B (fresh evidence: pnpm test:e2e 35 passed, build exit 0, test 768 passed and 2 skipped)
+- RUNTIME VERIFIED: startup order and real app launch (T2.6, T7.0); built meta CSP and CSP header, no unsafe-* (T2.7); sandboxed preload with bundled Zod and frozen `app.getInfo` bridge (T3.3); real wrong-sender and subframe rejection (negative-sender e2e); renderer shell and shell extension checks (M4, M5); S-1 hardening (`frame === sender.mainFrame`) implemented with negative E2E.
+- DEFERRED: real-symlink containment (2 tests skipped on Windows without privilege); fuses, ASAR integrity, packaging (packaging phase); macOS and Linux behavior NOT VERIFIED.
+- Status: M2 and M3 COMPLETE on Windows x64, with the deferrals above.

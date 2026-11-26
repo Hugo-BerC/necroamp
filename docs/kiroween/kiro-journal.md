@@ -228,3 +228,12 @@ Implemented the renderer shell, stores, bridge adapter, six placeholder regions 
 
 ### Result
 Fresh validation: typecheck, lint, format:check and build exit 0. Vitest 625 passed, 2 skipped (symlink privilege, same two as before), 42 files. T4.1 to T4.8 and T5.1 to T5.4 ticked; T5.5 stays open (no `desktop-foundation-skin-seams.md`).
+
+## 14. Phase 06: tests, defect fixes and E2E, Block B (M6, M7; branch `feature/desktop-foundation`)
+### Agents and skills actually invoked
+- `qa-engineer` (with the `testing-strategy` skill): property, static, integration, jsdom a11y and Playwright Electron tests, axe scan, defects 0001 to 0004, coverage notes.
+- `desktop-engineer`: resolve-app-path coverage fix (0001) and stricter sender validation.
+- `frontend-engineer`: renderer fixes for defects 0002 to 0004.
+- Block B reviewer (verdict `APPROVED`, no findings).
+### Result
+Fresh: typecheck, lint, format:check, build exit 0; vitest 52 files, 768 passed, 2 skipped; coverage statements 99.44, branches 98.23, functions 100, lines 99.78 (thresholds unchanged); test:e2e 35 passed. M6 complete; M7 partly open (T7.5 to T7.7).
