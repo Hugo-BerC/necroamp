@@ -93,10 +93,11 @@ export function resolveAppPath(input: unknown, pathApi: PathApi, root: string): 
   if (decoded === null) return reject('BAD_URL');
 
   const trimmed = decoded === '' || decoded === '/' ? `/${ENTRY_FILE}` : decoded;
+  // Defensive: a hierarchical URL pathname always starts with '/'. Unreachable through URL.
+  /* v8 ignore next -- @preserve */
   if (!trimmed.startsWith('/')) return reject('BAD_URL');
   const segments = trimmed.slice(1).split('/');
   if (segments.at(-1) === '') segments.pop(); // one trailing slash
-  if (segments.length === 0) return reject('BAD_URL');
 
   for (const segment of segments) {
     if (segment === '' || segment === '.' || segment === '..') return reject('TRAVERSAL');
@@ -106,11 +107,11 @@ export function resolveAppPath(input: unknown, pathApi: PathApi, root: string): 
     if (segment.startsWith('.') || segment.endsWith('.') || segment.endsWith(' ')) {
       return reject('FORBIDDEN_CHARS');
     }
-    const stem = (segment.split('.')[0] ?? '').trimEnd();
+    const stem = segment.split('.', 1)[0]!.trimEnd();
     if (RESERVED_DEVICE_NAME.test(stem)) return reject('FORBIDDEN_CHARS');
   }
 
-  const last = segments.at(-1) ?? '';
+  const last = segments[segments.length - 1]!;
   if (!isAllowedExtension(extensionOf(last))) return reject('BAD_EXTENSION');
 
   const relativePath = pathApi.join(...segments);

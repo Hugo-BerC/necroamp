@@ -94,6 +94,8 @@ describe('registerAppHandlers', () => {
   });
 });
 
+let registeredContents: unknown;
+
 describe('installIpcHandlers', () => {
   const trusted = ['app://renderer'];
   const make = (isRegisteredSender: (s: unknown) => boolean) => {
@@ -114,8 +116,31 @@ describe('installIpcHandlers', () => {
   });
 
   it('accepts the registered top frame on a trusted origin', async () => {
-    const { ipcMain } = make((sender) => sender === 'main');
-    expect(await ipcMain.invoke(goodEvent)).toMatchObject({ ok: true });
+    const { ipcMain } = make((sender) => sender === registeredContents);
+    const frame = { url: 'app://renderer/index.html', parent: null };
+    const event = { senderFrame: frame, sender: { mainFrame: frame } };
+    registeredContents = event.sender;
+    expect(await ipcMain.invoke(event)).toMatchObject({ ok: true });
+  });
+
+  it('rejects an unregistered contents even when the frame is its main frame', async () => {
+    registeredContents = { mainFrame: null };
+    const { ipcMain } = make((s) => s === registeredContents);
+    const frame = { url: 'app://renderer/index.html', parent: null };
+    expect(
+      await ipcMain.invoke({ senderFrame: frame, sender: { mainFrame: frame } }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_SENDER' } });
+  });
+
+  it('rejects a parentless frame that is not the sender main frame', async () => {
+    const sender = { mainFrame: { url: 'app://renderer/index.html', parent: null } };
+    registeredContents = sender;
+    const { ipcMain } = make((s) => s === registeredContents);
+    const event = { senderFrame: { url: 'app://renderer/index.html', parent: null }, sender };
+    expect(await ipcMain.invoke(event)).toMatchObject({
+      ok: false,
+      error: { code: 'INVALID_SENDER' },
+    });
   });
 
   it.each([

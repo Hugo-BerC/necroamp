@@ -7,10 +7,14 @@ import { createNecroampApi } from '../../src/preload/create-necroamp-api';
 // T6.3: preload API + installIpcHandlers (registerHandler, sender validation) with fakes at the edge.
 type Listener = (event: SenderEventLike, ...args: unknown[]) => Promise<unknown>;
 
-const TRUSTED_SENDER = { id: 'registered' };
+const TRUSTED_SENDER: { id: string; mainFrame?: SenderEventLike['senderFrame'] } = {
+  id: 'registered',
+};
 const log = { info: () => undefined, warn: () => undefined, error: () => undefined };
 
 function wire(senderFrame: SenderEventLike['senderFrame'], sender: unknown, platform = 'linux') {
+  // A real WebContents always has a mainFrame; the trusted sender's main frame is the frame under test.
+  if (sender === TRUSTED_SENDER) TRUSTED_SENDER.mainFrame = senderFrame;
   const listeners = new Map<string, Listener>();
   const removed: string[] = [];
   const dispose = installIpcHandlers({
@@ -49,6 +53,12 @@ describe('preload <-> main IPC round trip', () => {
     ['unregistered sender', { url: 'app://renderer/', parent: null }, { id: 'other' }],
   ] as const)('maps an untrusted sender (%s) to INVALID_SENDER', async (_n, frame, sender) => {
     const { api } = wire(frame, sender);
+    expect(await api.app.getInfo()).toMatchObject({ ok: false, error: { code: 'INVALID_SENDER' } });
+  });
+
+  it('rejects a top-level frame that is not the sender main frame (CF-1)', async () => {
+    const { api } = wire({ url: 'app://renderer/index.html', parent: null }, TRUSTED_SENDER);
+    TRUSTED_SENDER.mainFrame = { url: 'app://renderer/index.html', parent: null };
     expect(await api.app.getInfo()).toMatchObject({ ok: false, error: { code: 'INVALID_SENDER' } });
   });
 
