@@ -237,3 +237,14 @@ Fresh validation: typecheck, lint, format:check and build exit 0. Vitest 625 pas
 - Block B reviewer (verdict `APPROVED`, no findings).
 ### Result
 Fresh: typecheck, lint, format:check, build exit 0; vitest 52 files, 768 passed, 2 skipped; coverage statements 99.44, branches 98.23, functions 100, lines 99.78 (thresholds unchanged); test:e2e 35 passed. M6 complete; M7 partly open (T7.5 to T7.7).
+
+## 15. Phase 07: final delivery preparation, Block C (M8 preparation; branch `feature/desktop-foundation`)
+### What was done
+Acceptance reconciliation of M0 to M8 against tasks.md, fresh full validation, README, ADR 0003 and 0005 runtime notes, backlog update and the single delivery report (`docs/engineering/desktop-foundation-delivery-report.md`). No `desktop-foundation-final-review.json` existed, so no repair work was done.
+### Agents and skills actually invoked
+None. The orchestrator did this work directly. The `quality-review` workflow was not run.
+### Result
+Fresh on Windows x64: typecheck, lint, format:check, test, test:coverage, build, test:e2e and pnpm licenses exit 0. Vitest 52 files, 768 passed, 2 skipped. E2E 35 passed. M7 and M8 stay INTEGRATION PENDING (T7.5, T7.6, T8.1 to T8.4, T8.6).
+
+### Block C closing step
+T7.5 build-validation document written. Bounded `pnpm dev` run: startup and clean shutdown confirmed, T7.6 remains pending (needs human console/HMR observation). base_ref origin/main = 66f9f7f. Fresh run after the dev run: build exit 0, test:e2e 35 passed. Final commit hashes, PR and merge status are in the delivery report section 8.

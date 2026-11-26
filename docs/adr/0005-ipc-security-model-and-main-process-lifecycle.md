@@ -105,3 +105,7 @@ Findings.
 No finding concerns a missing schema, an exported Electron or DOM type, a literal channel string outside `channels.ts`, or a payload or error that can carry a path, token or stack trace.
 
 Verdict: ACCEPT. The contract matches Decision items 1, 2 and 4 and the dependency direction. No blockers. Not covered: renderer adapter code, test assertions, runtime behavior (T4.2, T7.x). The named file `docs/security/desktop-foundation-m3-review.md` is replaced by the canonical review `docs/security/m2-m3-security-review.md` (human decision).
+
+## Addendum: runtime verification
+
+Runtime note (Block C): the sandboxed preload (one CommonJS file with bundled Zod) loads and the bridge reports Connected in E2E on Windows x64. Sender validation requires main-frame identity (commit `55c38d4`).

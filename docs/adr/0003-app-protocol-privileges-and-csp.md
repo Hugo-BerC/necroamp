@@ -39,3 +39,7 @@ frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; media-src 'none'; m
 - Local HTTP server. Opens a port.
 - `net.fetch(pathToFileURL(...))` in the handler. It needs `net`, and it removes the handler's own confinement check.
 - `bypassCSP` or `corsEnabled` by default. Wider privileges without evidence of need.
+
+## Addendum: runtime verification
+
+Runtime note (Block C): the production build served from `app://renderer` with the meta CSP loads its module script and runs under E2E on Windows x64 (35 tests), so the item-3 `corsEnabled` fallback was not needed. macOS and Linux are not verified. F-3 remains open (see `docs/engineering/backlog.md`).

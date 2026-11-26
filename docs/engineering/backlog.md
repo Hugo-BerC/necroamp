@@ -60,3 +60,11 @@ Status: **accepted temporarily for Desktop Foundation. Not resolved.** Mandatory
 | F-6 | Environment variables honored only when unpackaged. | No action. | none |
 
 F-1 and F-2 are corrected in code with regression tests (accepted by the human). F-5 is accepted and recorded in ADR 0005.
+
+### Block C status of the downstream duties (fresh run, Windows x64)
+- F-3 stays open: mandatory reassessment before the first public release. No code change.
+- F-8: runtime-verified by the 35 E2E tests and the preview run (module scripts and 'self' on pp://renderer, sandboxed preload with bundled Zod, meta CSP in built HTML). The corsEnabled fallback was not needed.
+- F-4: still open until the human pnpm dev run (T7.6).
+- F-7 and all packaging-specific checks (fuses, ASAR integrity, ealpath on the ASAR layout, production devTools, installers, signing, auto-update, Linux targets, macOS x64 cross-build): DEFERRED.
+- No CI exists (.github/workflows is absent). Add the CI workflow (including YAML lint, F2) before release.
+- Open items from the final delivery: T5.5 seam review, T7.5 build validation document, T8.1 to T8.4 reviews, manual skill activation test (A1).
