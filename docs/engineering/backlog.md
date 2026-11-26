@@ -24,3 +24,39 @@ Source: `docs/engineering/reviews/review-gate-final.json`, a preserved copy of t
 | GAP-1 | Info | qa-engineer, security-reviewer | review coverage | 21 reference files were not all read line by line. `testing-strategy` was reviewed by security only. | Open. Cover in the next review touching these files. |
 
 The QA advisories A2 to A9 in the QA report map to the IDs above. A6 does not appear in the gate file.
+
+## Desktop Foundation M2/M3: accepted temporary risks and downstream validation
+
+Source: `docs/security/m2-m3-security-review.md` (canonical combined review, findings F-1 to F-8). Human decision: implementation acceptance of M2 and M3, not runtime acceptance.
+
+### F-3: filesystem TOCTOU in the `app://` handler (Low, accepted temporarily)
+
+Status: **accepted temporarily for Desktop Foundation. Not resolved.** Mandatory reassessment before the first public release (owner: desktop-engineer with security-reviewer; decision recorded in an ADR or a security note). The protocol code is unchanged by this decision.
+
+- **Location.** `src/main/protocol/app-protocol.ts`, the sequence `realpath`, `stat`, `readFile` on a path (review cites about L98 to L113).
+- **Preconditions.** A local process that can write inside the app's own output directory (the unpacked `out/renderer` tree, or the installed resources) must replace a file or directory component with a symlink or junction between the containment check and the read. No renderer-supplied input can create that condition.
+- **Affected boundary.** Confinement of served files to the renderer root. A successful swap could return a file outside the root to the renderer through `app://renderer`.
+- **Current mitigations.**
+  - The URL path is validated lexically before any filesystem access (no traversal, encoded separators, backslashes, dotfiles, reserved device names, extension allow-list).
+  - The root is resolved once. Each file's `realpath` must be inside the root. The file must be a regular file of at most 5 MiB.
+  - Every rejection returns 404 without detail.
+  - The renderer is sandboxed and has no filesystem or network access of its own. Only GET and HEAD are served.
+  - An attacker with write access to the install directory can already replace the application's code, so the residual gain is small.
+- **Residual risk.** A narrow race window remains between the checks and the read. The effect is limited to disclosure of a file readable by the user running the app, and only to that app's own renderer.
+- **Proposed mitigation (not implemented).** Open the file once, `fstat` the handle, and read through the same handle. Compare the handle's identity (device and inode where available) and the resolved path of the opened file against the root.
+- **Limitations of that mitigation.**
+  - Windows semantics differ: there is no inode comparison in the POSIX sense, and resolving the final path of an open handle needs a platform-specific step. Behavior on NTFS junctions and reparse points must be tested on a real Windows host (the two real-symlink tests are skipped on this host).
+  - Node has no atomic "open below this directory" primitive. Directory components can still be swapped before the open, so the approach narrows the race and does not remove it.
+  - It adds cost: handle lifetime management, streaming or bounded reads through the handle, and more test fixtures. `protocol.registerSource` (experimental in Electron 45.5.0) moves containment into Electron and could be evaluated instead; adopting it needs an ADR (see `docs/architecture/electron-api-verification.md`, section 2.4).
+- **Reassessment gate.** Before the first public release, decide among accept permanently, implement the handle-based read, or adopt a different serving mechanism. Until then F-3 stays open in this table.
+
+### Downstream validation duties from the accepted findings
+
+| ID | Finding | Required validation | Task |
+|---|---|---|---|
+| F-4 | Dev CSP allows `unsafe-inline` for scripts and styles on design grounds only. | Run `pnpm dev`, remove each allowance the pinned Vite and React plugin does not need, record the result. | T7.6 |
+| F-7 | Fuses, ASAR integrity, `realpath` against the ASAR layout, and `devTools` in production builds are not part of M2/M3. | Cover in the packaging review. | M7, M8, release-engineer |
+| F-8 | Not verified at runtime: `'self'` matching `app://renderer`; module scripts without `corsEnabled`; sandboxed preload with bundled Zod; meta CSP in built HTML. | Verify against the built app and E2E. If module scripts fail, apply the `corsEnabled` fallback (ADR 0003 item 3) and amend the ADR. | T7.0, T7.2, T7.5 |
+| F-6 | Environment variables honored only when unpackaged. | No action. | none |
+
+F-1 and F-2 are corrected in code with regression tests (accepted by the human). F-5 is accepted and recorded in ADR 0005.
