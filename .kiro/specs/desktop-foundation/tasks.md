@@ -515,3 +515,9 @@ git status --short
 - T5.5: DEFERRED, optional per the Spec (task title "optional"; acceptance item 5 starts "If T5.5 runs").
 - F-3: mandatory reassessment before the first public release, OPEN. Packaging checks (F-7: fuses, ASAR integrity, devTools, `electron-builder.yml`) DEFERRED. GitHub CI ABSENT (not passing). macOS and Linux NOT VERIFIED.
 - Actionable findings by owner: desktop-engineer: V-3 (dev CSP, after T7.6), V-6, V-8, V-10 (with frontend-engineer), A-1 ADR note owner is necro-architect; qa-engineer: V-12, V-13, V-14; release-engineer: V-4, V-5; necro-architect: A-1, A-4. No finding requires a src/renderer change today.
+## Block E reconciliation (T7.6 HMR, V-1, V-2)
+- T7.6: PENDING. Automated validation PASSED on Windows x64 (report: `docs/release/desktop-foundation-dev-runtime-validation.md`). Startup, renderer load, no page errors, clean shutdown, HMR for TS (tagline) and CSS (padding) with no full reload, files restored (`git diff --quiet -- src/renderer` exit 0), dev `script-src` and `style-src` `'unsafe-inline'` both required, production CSP unchanged, `pnpm build` exit 0 afterwards. The Spec text requires a human-run `pnpm dev`, so it stays pending. Only remaining action: the human runs `pnpm.cmd dev`, sees the window and closes it, or accepts the automated run in its place.
+- T7.7: PENDING on T7.6 only (all commands exit 0 on Windows; macOS and Linux NOT VERIFIED).
+- V-1: the human approved the `.kiro/steering/tech.md` E-ESM-1 edit earlier (recorded here per the orchestrator).
+- V-2: owner of the unowned tooling and config files (`eslint.config.mjs`, `prettier.config.mjs`, `.npmrc`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.editorconfig`, `.gitattributes`, `.prettierignore`, `.gitignore`) is the authorized top-level orchestrator. No permission widening.
+- T8.5: PENDING (human hook confirmation requested). T8.6: PENDING; not merged.

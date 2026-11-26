@@ -100,3 +100,10 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 - CI: ABSENT. No `.github/workflows` exists, `gh pr checks` reports no checks, and the PR has no status check rollup. This is not a pass.
 - Merge: NOT MERGED. Blockers: T7.6 (HMR probe and human `pnpm dev` confirmation), T7.7 (depends on T7.6), T8.5 hook confirmation, T8.6 human approval, V-1 and V-2 decisions. T8.1 to T8.4 are COMPLETE. GitHub CI ABSENT, macOS and Linux NOT VERIFIED, F-3 and packaging checks DEFERRED. Section 5 ("T5...") of the human message was cut off and is pending.
 - Launch (production build): `pnpm.cmd build; pnpm.cmd exec electron-vite preview`. Development: `pnpm.cmd dev`.
+
+## Update: T7.6 HMR and V-1/V-2
+
+- T7.6 automated validation PASSED (HMR for TS and CSS, no page errors, clean shutdown, dev `unsafe-inline` required for script and style, production CSP unchanged, rebuild exit 0). Report: `docs/release/desktop-foundation-dev-runtime-validation.md`. T7.6 and T7.7 stay PENDING until the human runs `pnpm.cmd dev` and confirms the window, or accepts the automated run.
+- V-1: the E-ESM-1 edit to `.kiro/steering/tech.md` was approved by the human earlier.
+- V-2: the authorized top-level orchestrator owns the unowned tooling and config files. No permission widening.
+- T8.5 and T8.6 PENDING. Not merged.
