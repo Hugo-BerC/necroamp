@@ -213,3 +213,45 @@ Added 5 config files and 4 docs. Agents, skills and steering are unchanged (empt
 
 ### Limitations
 Recipe and hook syntax is VERIFIED only as valid JSON and against IDE-bundle evidence. IDE acceptance of the recipes was not tested in this step. `post-task-quality` fails silently without `package.json`. See `docs/engineering/automation-validation.md`.
+
+## 13. Phase 05: renderer and styling, Block A (M4, M5; branch `feature/desktop-foundation`)
+
+### What was done
+Implemented the renderer shell, stores, bridge adapter, six placeholder regions (M4) and the token-based, accessible CSS Modules styling with a pure WCAG contrast function (M5). First integration launch: `electron-vite preview` on the fresh build opened a `NecroAmp` BrowserWindow.
+
+### Agents and skills actually invoked
+- `git-reconcile` wf-coder: reconciled repository state before Block A.
+- `necro-architect`: renderer architecture and contract notes (`docs/architecture/renderer-architecture.md`, `contract-changes.md`).
+- `frontend-engineer`: renderer implementation (`src/renderer/`).
+- `art-director`: styling and skin-seam notes (`docs/design/foundation-styling.md`).
+- `wf-code-reviewer`: reviewed Block A; findings were resolved.
+
+### Result
+Fresh validation: typecheck, lint, format:check and build exit 0. Vitest 625 passed, 2 skipped (symlink privilege, same two as before), 42 files. T4.1 to T4.8 and T5.1 to T5.4 ticked; T5.5 stays open (no `desktop-foundation-skin-seams.md`).
+
+## 14. Phase 06: tests, defect fixes and E2E, Block B (M6, M7; branch `feature/desktop-foundation`)
+### Agents and skills actually invoked
+- `qa-engineer` (with the `testing-strategy` skill): property, static, integration, jsdom a11y and Playwright Electron tests, axe scan, defects 0001 to 0004, coverage notes.
+- `desktop-engineer`: resolve-app-path coverage fix (0001) and stricter sender validation.
+- `frontend-engineer`: renderer fixes for defects 0002 to 0004.
+- Block B reviewer (verdict `APPROVED`, no findings).
+### Result
+Fresh: typecheck, lint, format:check, build exit 0; vitest 52 files, 768 passed, 2 skipped; coverage statements 99.44, branches 98.23, functions 100, lines 99.78 (thresholds unchanged); test:e2e 35 passed. M6 complete; M7 partly open (T7.5 to T7.7).
+
+## 15. Phase 07: final delivery preparation, Block C (M8 preparation; branch `feature/desktop-foundation`)
+### What was done
+Acceptance reconciliation of M0 to M8 against tasks.md, fresh full validation, README, ADR 0003 and 0005 runtime notes, backlog update and the single delivery report (`docs/engineering/desktop-foundation-delivery-report.md`). No final review JSON existed at that time, so no repair work was done. The final security report was later renamed to `docs/security/desktop-foundation-final.md` (T8.3); the JSON kept its name.
+### Agents and skills actually invoked
+None. The orchestrator did this work directly. The `quality-review` workflow was not run.
+### Result
+Fresh on Windows x64: typecheck, lint, format:check, test, test:coverage, build, test:e2e and pnpm licenses exit 0. Vitest 52 files, 768 passed, 2 skipped. E2E 35 passed. M7 and M8 stay INTEGRATION PENDING (T7.5, T7.6, T8.1 to T8.4, T8.6).
+
+### Block C closing step
+T7.5 build-validation document written. Bounded `pnpm dev` run: startup and clean shutdown confirmed, T7.6 remains pending (needs human console/HMR observation). base_ref origin/main = 66f9f7f. Fresh run after the dev run: build exit 0, test:e2e 35 passed. Final commit hashes, PR and merge status are in the delivery report section 8.
+
+### Block D milestone reconciliation
+T8.1 (base 66f9f7f, HEAD 10dfc3f), T8.2 (quality-review run desktop-foundation-final, APPROVE WITH FIXES, 0 blockers), T8.3 (APPROVED) and T8.4 (architecture gate APPROVED) are COMPLETE. T7.6 stays PENDING (HMR untested, human launch unconfirmed), so T7.7 stays PENDING. T8.5 awaits hook confirmation, T8.6 awaits human approval plus V-1 and V-2. T5.5 DEFERRED (optional). F-3 and packaging checks DEFERRED, CI ABSENT, macOS and Linux NOT VERIFIED. Changes are uncommitted until the integration commit.
+
+T7.6 HMR probe (reversible, via CDP) passed for TS and CSS edits; files restored, no residue; dev unsafe-inline for script and style required; production CSP unchanged; rebuild exit 0. Report: docs/release/desktop-foundation-dev-runtime-validation.md. T7.6 and T7.7 stay PENDING for the human-run dev launch confirmation. V-1 recorded as human-approved; V-2 owner is the top-level orchestrator. T8.5 and T8.6 pending.
+
+Final acceptance: human approved Desktop Foundation (T8.5, T8.6 closed) with documented limitations; hooks confirmed disabled. PR #5 marked ready and squash merged.

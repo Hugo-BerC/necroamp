@@ -1,0 +1,12 @@
+# Single authoritative source for pnpm dependency lifecycle policy (pnpm 10.34.9).
+# strictDepBuilds (added in pnpm 10.3.0): installation exits non-zero when a dependency
+# has an unreviewed build script. Approved deviation from the R1.6 default.
+strictDepBuilds: true
+
+# Version-qualified allow entries are supported since pnpm 10.19.0.
+# A bump of esbuild fails the install until the new version is reviewed again.
+onlyBuiltDependencies:
+  - esbuild@0.28.2
+
+ignoredBuiltDependencies:
+  - fsevents

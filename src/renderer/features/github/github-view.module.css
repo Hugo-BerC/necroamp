@@ -1,0 +1,16 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--na-space-3);
+  min-width: 0;
+}
+
+.root [data-part='unavailable-note'] {
+  color: var(--na-color-text-muted);
+}
+
+.root [data-part='github-status'] {
+  color: var(--na-color-text);
+  font-weight: 600;
+}

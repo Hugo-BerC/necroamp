@@ -1,0 +1,52 @@
+/* Foundation tokens (T5.1). Neutral theme: not Morgul Revenant, not Analog 1984.
+   Tier 1 raw values are referenced only by tier 2. Components use tier 2 only.
+   A skin later overrides tier 2 through setProperty('--na-*'). */
+:root {
+  --na-raw-ink-0: #0d1012;
+  --na-raw-ink-1: #121417;
+  --na-raw-ink-2: #1a1d21;
+  --na-raw-ink-3: #232830;
+  --na-raw-line-1: #2c323b;
+  --na-raw-line-2: #6b7482;
+  --na-raw-fog-1: #e6e9ee;
+  --na-raw-fog-2: #9aa3ae;
+  --na-raw-fog-3: #7a8391;
+  --na-raw-teal: #5cc8c0;
+  --na-raw-blue: #7fb4ff;
+  --na-raw-red: #ff8a80;
+  --na-raw-amber: #f0c674;
+
+  --na-color-app-bg: var(--na-raw-ink-1);
+  --na-color-surface: var(--na-raw-ink-2);
+  --na-color-surface-raised: var(--na-raw-ink-3);
+  --na-color-surface-inset: var(--na-raw-ink-0);
+  --na-color-border-subtle: var(--na-raw-line-1);
+  --na-color-border-control: var(--na-raw-line-2);
+  --na-color-text: var(--na-raw-fog-1);
+  --na-color-text-muted: var(--na-raw-fog-2);
+  --na-color-text-disabled: var(--na-raw-fog-3);
+  --na-color-accent: var(--na-raw-teal);
+  --na-color-on-accent: var(--na-raw-ink-0);
+  --na-color-focus: var(--na-raw-blue);
+  --na-color-danger: var(--na-raw-red);
+  --na-color-warning: var(--na-raw-amber);
+
+  --na-space-1: 2px;
+  --na-space-2: 4px;
+  --na-space-3: 8px;
+  --na-space-4: 12px;
+  --na-space-5: 16px;
+  --na-space-6: 24px;
+  --na-radius-1: 2px;
+  --na-radius-2: 4px;
+  --na-border-width: 1px;
+  --na-focus-ring-width: 2px;
+  --na-focus-ring-offset: 2px;
+  --na-control-size: 36px;
+  --na-font-size-1: 11px;
+  --na-font-size-2: 12px;
+  --na-font-size-3: 14px;
+  --na-font-size-4: 20px;
+  --na-font-family-ui: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --na-font-family-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}

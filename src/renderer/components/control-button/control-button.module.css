@@ -1,0 +1,32 @@
+.control {
+  min-width: var(--na-control-size);
+  min-height: var(--na-control-size);
+  padding: 0 var(--na-space-4);
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-2);
+  background: var(--na-color-surface-raised);
+  color: var(--na-color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.control:hover {
+  background: var(--na-color-surface);
+}
+
+.control:active {
+  background: var(--na-color-surface-inset);
+}
+
+/* Unavailable is shown by a dashed border and muted text, not by color alone. */
+.control[aria-disabled='true'] {
+  border-style: dashed;
+  color: var(--na-color-text-muted);
+  cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+  .control {
+    border-color: CanvasText;
+  }
+}

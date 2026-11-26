@@ -1,4 +1,5 @@
 # necroamp
+
 NecroAmp — The developer's music player. Resurrecting classic desktop music players for modern developers. Built with Kiro for Kiroween 2026.
 
 > Code. Listen. Repeat.
@@ -92,11 +93,28 @@ Project-specific Kiro configuration is maintained in the
 
 ## Development Status
 
-Project initialization.
+Desktop Foundation (branch `feature/desktop-foundation`): the Electron main process, sandboxed preload, typed IPC and a React shell with six placeholder regions are implemented and tested on Windows x64. Playback, playlists, equalizer, visualizer, skins and GitHub features are not implemented yet. macOS and Linux are not verified. Installers are not built. See `docs/engineering/desktop-foundation-delivery-report.md`.
 
-Application implementation, installers and documentation
-will be added during the development process.
+To launch the production build locally: `pnpm.cmd build; pnpm.cmd exec electron-vite preview`.
 
 ## License
 
 MIT License.
+
+## Development
+
+Requires Node.js 24 LTS and pnpm 10. On Windows PowerShell use `pnpm.cmd` if script execution is restricted.
+
+| Command                             | Purpose                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile`    | Install pinned dependencies. Lifecycle scripts are deny-by-default.          |
+| `pnpm dev`                          | Start electron-vite in development mode (interactive run not yet validated). |
+| `pnpm build`                        | Build main, preload and renderer into `out/`.                                |
+| `pnpm typecheck`                    | Run `tsc -b` over all projects.                                              |
+| `pnpm lint`                         | Run ESLint.                                                                  |
+| `pnpm format` / `pnpm format:check` | Write or check Prettier formatting.                                          |
+| `pnpm test`                         | Run Vitest once.                                                             |
+| `pnpm test:coverage`                | Run Vitest with coverage thresholds.                                         |
+| `pnpm test:e2e`                     | Run Playwright against the built app.                                        |
+
+Platform status: Windows x64 is the only validated platform. macOS and Linux are not verified.
