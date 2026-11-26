@@ -1,6 +1,6 @@
 # Tasks: desktop-foundation (Phase 05)
 
-Status: DRAFT for human approval. No task has started. Inputs: `requirements.md` (R1 to R17), `preflight.md`, `design.md` (conditionally approved, amended: N4 exception E1, lifecycle policy 9.3, validation tasks V1 to V11 in section 15, host gate H0 in section 16, Appendix A), steering, the nine agents in `.kiro/agents/`, and the three workflows in `.kiro/workflows/`.
+Status: APPROVE WITH FIXES applied (design E5 to E8). Gate H0 passed (design section 16). No M0 task beyond H0 has completed. Checkboxes are ticked only with recorded evidence, by Orch or the human. Inputs: `requirements.md` (R1 to R17), `preflight.md`, `design.md` (approved with fixes, E5 to E8; amended: N4 exception E1, lifecycle policy 9.3, validation tasks V1 to V11 in section 15, host gate H0 in section 16, Appendix A), steering, the nine agents in `.kiro/agents/`, and the three workflows in `.kiro/workflows/`.
 
 ## How to read this file
 
@@ -20,7 +20,7 @@ Status: DRAFT for human approval. No task has started. Inputs: `requirements.md`
 | audio-engineer | `src/renderer/audio/**`, `src/shared/audio/**`, `docs/audio/**` | `pnpm typecheck*`, `lint*`, `test*` | Not used: this phase has no audio (R8.4, R8.7). |
 
 - **Workflows.** Only `quality-review.workflow.json` is used (M8), because it gives three independent reviews and a verdict. `feature-development` is not used: `preflight.md` W1, W3, W5 and W7 found it unfit for a multi-domain phase. `release-validation` is not used: it validates packaging (`pnpm package`, `electron-builder.yml`), which D10 defers. Small tasks run as direct single-agent sessions. Hooks stay disabled (`preflight.md` C, R-g in the design).
-- **Platform.** Windows x64 with PowerShell 7 is the only runtime validation target. macOS and Linux are designed for (pure platform branches, `.gitattributes`, no POSIX-only commands) and reported **NOT VERIFIED** until run on those hosts. No milestone claims otherwise.
+- **Platform.** Windows x64 with PowerShell 7 is the only runtime validation target. macOS and Linux are designed for (pure platform branches, `.gitattributes`, no POSIX-only commands) and reported **NOT VERIFIED** until run on those hosts. No milestone claims otherwise. In PowerShell 7 on this host, run `npm.cmd` and `pnpm.cmd` wherever commands below say `npm` or `pnpm` (design E6). Never change the execution policy, never disable TLS validation, and never add proxy, certificate or machine-specific environment configuration to the repository.
 - **Failure rule.** A failing validation command is never retried unchanged. The runner stops, records command, exit code and first error lines, and applies the smallest-adjustment procedure in `design.md` section 15.
 - **Run labels.** Fixed kebab-case labels such as `desktop-foundation-1` (W6).
 
@@ -46,24 +46,40 @@ M0 host + deps ──► M1 scaffold ──► M2 main ──┬──► M3 con
 
 ---
 
+## Task-level dependencies and status rules (design E7)
+
+- **Implementation complete** means the task's files exist, their unit tests pass, and typecheck, lint and test pass for the touched projects. **Integration validated** means every cross-milestone consumer exists and the combined command (for example `pnpm build`) has run.
+- A milestone is PASSED only when its own tasks and all cross-milestone integration tasks it owns or depends on are complete. Otherwise it is recorded "IMPLEMENTED, integration pending: T..". A command that cannot yet run is recorded "DEFERRED to T..". No fake entry point, stub or empty CSS file is created to satisfy an intermediate command.
+
+| Task | Requires | Reason |
+|---|---|---|
+| T3.2 | T2.2, T3.1 | Handlers need sender validation from T2.2 |
+| T2.6 | T2.1 to T2.5, T3.2 | Composition root registers T3.2's IPC handlers |
+| T2.7 | T1.2 | Config plugin only |
+| T3.3 | T3.1 | Preload uses `IPC_CHANNELS` only |
+| T4.2 | T3.1 | Adapter parses the shared response schema |
+| T5.2 | T4.1 | `main.tsx` imports `global.css` once it exists |
+| T5.3 | T4.5 | View files import their CSS Modules once they exist |
+| T7.0 | T2.6, T2.7, T3.3, T4.6, T5.2, T5.3 | Whole-application build needs main, preload and renderer entries and all imported CSS |
+| T7.1 to T7.7 | T7.0 | E2E runs against the built app |
 ## M0 Host environment and dependency bootstrap
 
 **Responsible agent.** Orch with the human operator for host and install steps. Sub-tasks: necro-architect (ADRs and dependency notes), desktop-engineer (`package.json`, `.nvmrc`), security-reviewer (review).
 
 **Agent Skills.** `cross-platform-packaging` (lockfile, pnpm, reproducible installs, license inventory), `electron-security` (dependency and script review), `typescript-standards`. necro-architect also carries `testing-strategy`.
 
-**Dependencies.** None. M0 blocks everything else. Only T0.2 to T0.5 documentation work needs no host tools and may start before H0 passes. `pnpm install` waits for H0 and the section 14 approvals.
+**Dependencies.** None. M0 blocks everything else. Only T0.2 to T0.5 documentation work needs no host tools and may start before H0 passes. H0 has passed. `pnpm.cmd install` waits for T0.2, T0.6 and the section 14 approvals.
 
 **Tasks.**
 
-- [ ] **T0.1 Gate H0 (host).** Human installs Node.js 24 (>=24.15.0) and pnpm 10.34.9 using `design.md` Appendix A (A.1 to A.5). Orch verifies and records the outputs (V1). Host Node and Electron-embedded Node are recorded as separate facts; the embedded value is filled in at T0.8.
-- [ ] **T0.2 Registry re-check.** Orch runs the read-only registry loop from `design.md` section 14 with each exact version from 9.1 (`/<version>` instead of `/latest`). Any difference in version, license, engines, peers or scripts stops the milestone and goes to the human.
-- [ ] **T0.3 ADRs and dependency note.** necro-architect writes ADR 0002 (single package, ESLint plus Prettier, test stack, coverage), ADR 0003 (`app://` scheme, privileges, CSP, `corsEnabled` fallback), ADR 0004 (dependency lifecycle policy, esbuild and electron approvals in principle, fsevents denied, N4 exception E1), ADR 0005 (IPC security model, window chrome, lifecycle, menu, single instance), and `docs/architecture/dependency-versions.md` (candidate table, V1 to V11 status, N4 inventory entry with license notice handling).
-- [ ] **T0.4 Policy and ignore files.** Orch writes `.npmrc` (`engine-strict=true` only), `pnpm-workspace.yaml` (`strictDepBuilds: true`, `ignoredBuiltDependencies: [fsevents]`, no `esbuild` entry yet), and the `.gitignore` additions (`node_modules`, `out`, `coverage`, `test-results`, `playwright-report`, `node_modules/.cache`). `.kiro` is never added to `.gitignore`.
-- [ ] **T0.5 Dependency manifest.** desktop-engineer writes `package.json` (`private`, `engines.node >=24.15.0 <25`, `packageManager pnpm@10.34.9`, exact pins from 9.1 with N4 packages in `devDependencies`, the scripts table from design 9.5, no `pre*`/`post*`/`prepare`) and `.nvmrc` (`24`). No install.
-- [ ] **T0.6 Security review of the install surface.** security-reviewer reads `package.json`, `pnpm-workspace.yaml`, script bodies and the dependency list, plus the `.npmrc` text that Orch quotes in the request (the agent cannot read `.npmrc`, N10). Output: `docs/security/desktop-foundation-m0-install-review.md`.
-- [ ] **T0.7 Install under strict builds.** After human approval of the section 14 gate, Orch runs `pnpm install`. With `strictDepBuilds: true` the first run is expected to fail on `esbuild`. That output is the V2 evidence. Orch verifies the esbuild script body and the resolved version, adds the version-qualified `esbuild@<version>` entry to `onlyBuiltDependencies`, and reruns `pnpm install` once. Then `pnpm install --frozen-lockfile` once (R1.5). Any other unreviewed script stops the milestone.
-- [ ] **T0.8 Validation V1, V2, V3, V11.** Orch runs: lockfile `requiresBuild` listing (V2), Electron on-demand binary download with human approval of the network call (V3), `pnpm licenses list --prod --json` and `--dev --json` (V11), and Appendix A.7 for the embedded Node value. necro-architect records results in `docs/architecture/dependency-versions.md`.
+- [x] **T0.1 Gate H0 (host). H0 PASSED; do not reinstall.** Host record in `design.md` section 16 and A.0: PowerShell 7.6.10; Node v24.22.3 x64 win32; npm.cmd 11.19.1; pnpm.cmd 10.34.9; git 2.56.1.windows.1; `npm.cmd ping` OK; `pnpm.cmd view pnpm@10.34.9 version` OK; no TLS errors. Orch records the outputs (V1) and ticks this box. Host Node and Electron-embedded Node are recorded as separate facts; the embedded value is filled in at T0.8.
+- [x] **T0.2 Registry re-check.** **DONE.** Evidence: `docs/security/m0-dependency-validation.md` (32 exact-version `npm.cmd view` lookups, exit 0) and `docs/security/m0-resolution-report.md`. One difference, D1 (eslint 9.39.5 deprecated), stopped the task and was resolved by the human (accepted temporarily). Orch runs the read-only registry loop from `design.md` section 14 with each exact version from 9.1 (`/<version>` instead of `/latest`). Any difference in version, license, engines, peers or scripts stops the milestone and goes to the human.
+- [x] **T0.3 ADRs and dependency note.** **Status: DONE.** ADRs 0002 to 0005 are written in `docs/adr/` (0002 also records exception E-ESM-1). `docs/architecture/dependency-versions.md` now exists (31 top-level packages, toolchain, licenses, exceptions, V1/V2/V3/V11 status). necro-architect writes ADR 0002 (single package, ESLint plus Prettier, test stack, coverage), ADR 0003 (`app://` scheme, privileges, CSP, `corsEnabled` fallback), ADR 0004 (dependency lifecycle policy, esbuild and electron approvals in principle, fsevents denied, N4 exception E1), ADR 0005 (IPC security model, window chrome, lifecycle, menu, single instance), and `docs/architecture/dependency-versions.md` (candidate table, V1 to V11 status, N4 inventory entry with license notice handling).
+- [x] **T0.4 Policy and ignore files.** **DONE (2026-11-26).** `.npmrc` approved by the human and written (exactly `engine-strict=true` plus newline, 19 bytes, not ignored by `.gitignore`). `pnpm-workspace.yaml` exists with the approved policy. `.gitignore` verified for all six generated paths and `.kiro/` is not ignored and is tracked (`docs/security/m0-closure-validation.md` section 2; re-checked with `git check-ignore -v`). Orch writes `.npmrc` (`engine-strict=true` only), `pnpm-workspace.yaml` (`strictDepBuilds: true`, an explicitly approved deviation from the original R1.6 default (design E5) that keeps deny-by-default lifecycle execution; `ignoredBuiltDependencies: [fsevents]`; no `esbuild` entry yet), and the `.gitignore` additions (`node_modules`, `out`, `coverage`, `test-results`, `playwright-report`, `node_modules/.cache`). `.kiro` is never added to `.gitignore`.
+- [x] **T0.5 Dependency manifest.** desktop-engineer writes `package.json` (`private`, `engines.node >=24.15.0 <25`, `packageManager pnpm@10.34.9`, exact pins from 9.1 with N4 packages in `devDependencies`, the scripts table from design 9.5, no `pre*`/`post*`/`prepare`) and `.nvmrc` (`24`). No install.
+- [x] **T0.6 Security review of the install surface.** **Status: DONE (2026-11-26).** The human accepted `docs/security/m0-security-review.md` as the canonical T0.6 deliverable (no duplicate report). The review ends with a factual addendum quoting the root `.npmrc` (exactly `engine-strict=true`). The remainder of this entry is the original task text. Original status: partial. Existing evidence: `docs/security/m0-security-review.md` (PASS WITH CONDITIONS; manifest, `pnpm-workspace.yaml`, lifecycle policy), `m0-resolution-report.md` (472 lockfile entries checked for scripts), `m0-post-install-validation.md`. Missing against the task text: the review did not cover the `.npmrc` text (the file did not exist then; it now holds one line) and the output file is not the named `desktop-foundation-m0-install-review.md`. Closing needs either a short security-reviewer addendum quoting the `.npmrc` line, or a human decision to accept the existing review as the T0.6 output. security-reviewer reads `package.json`, `pnpm-workspace.yaml`, script bodies and the dependency list, plus the `.npmrc` text that Orch quotes in the request (the agent cannot read `.npmrc`, N10). Output (actual, human-accepted): `docs/security/m0-security-review.md`. The earlier planned name `docs/security/desktop-foundation-m0-install-review.md` is not used.
+- [x] **T0.7 Install under strict builds.** Evidence: `docs/security/m0-post-install-validation.md`. The operator ran a single `pnpm.cmd install --frozen-lockfile` (exit 0) with the `esbuild@0.28.2` entry already present (reviewed in M0 resolution), so the expected first failing run did not occur; lockfile hash unchanged. After human approval of the section 14 gate, Orch runs `pnpm install`. With `strictDepBuilds: true` the first run is expected to fail on `esbuild`. That output is the V2 evidence. Orch verifies the esbuild script body and the resolved version, adds the version-qualified `esbuild@<version>` entry to `onlyBuiltDependencies`, and reruns `pnpm install` once. Then `pnpm install --frozen-lockfile` once (R1.5). Any other unreviewed script stops the milestone.
+- [x] **T0.8 Validation V1, V2, V3, V11.** **Status: DONE.** V3 (Electron 45.5.0, embedded Node 24.22.3, x64 win32), V2 (installed-tree scan, one script-bearing package) and V11 (licenses) have evidence in `docs/security/m0-closure-validation.md` and `m0-post-install-validation.md`. The record is in `docs/architecture/dependency-versions.md` (Electron v45.5.0, embedded Node 24.22.3 x64 win32, measured). Orch runs: lockfile `requiresBuild` listing (V2), Electron on-demand binary download with human approval of the network call (V3), `pnpm licenses list --prod --json` and `--dev --json` (V11), and Appendix A.7 for the embedded Node value. necro-architect records results in `docs/architecture/dependency-versions.md`.
 
 **Expected deliverables.** Verified host (H0 record), ADRs 0002 to 0005, `docs/architecture/dependency-versions.md`, `.npmrc`, `pnpm-workspace.yaml`, `.gitignore` additions, `package.json`, `.nvmrc`, `pnpm-lock.yaml`, `docs/security/desktop-foundation-m0-install-review.md`, run notes with install outcome (scripts that ran).
 
@@ -103,13 +119,13 @@ pnpm licenses list --dev --json
 
 **Tasks.**
 
-- [ ] **T1.1 TypeScript projects.** desktop-engineer writes `tsconfig.json` (solution with references) and `tsconfig.shared.json`, `.main.json`, `.preload.json`, `.renderer.json`, `.tests.json`: `strict: true`, `composite`, `emitDeclarationOnly`, output under `node_modules/.cache/tsc`, path aliases `@shared/*`, `@main/*`, `@renderer/*`; `tsconfig.shared.json` with `lib: ["ES2023"]` and `types: []` (R2.4).
-- [ ] **T1.2 electron-vite config.** desktop-engineer writes `electron.vite.config.ts` with main, preload and renderer targets, `resolve.alias` for the three aliases per target, the React plugin, CommonJS preload output, and the output layout in design 3.1. The meta-CSP plugin is added in T2.7.
-- [ ] **T1.3 Seed files.** desktop-engineer writes `src/main/constants.ts` and `src/shared/ipc/channels.ts` so project references have inputs. Projects without inputs yet (`renderer`, `tests`) are made green by their first files in M4 and M6; until then `tsc -b` may report TS18003 for them and this is recorded, not hidden.
-- [ ] **T1.4 Vitest config.** qa-engineer writes `vitest.config.ts` (node and jsdom projects, shared alias table, `globals: false`, setup file registering jest-dom and `cleanup`, network-stub setup, coverage block from design 10) and `tests/config/alias-consistency.test.ts` (R2.2).
-- [ ] **T1.5 Lint, format, repository hygiene.** Orch writes `eslint.config.mjs` (flat config, `typescript-eslint`, `react`, `react-hooks`, `jsx-a11y`, boundary `no-restricted-imports` blocks per design 1, `no-restricted-syntax` and globals for R3.1, R4.1, R6.5, R8.4, R8.7, R15.1), `prettier.config.mjs`, `.prettierignore`, `.editorconfig`, `.gitattributes` (LF normalization). Orch runs `pnpm format` once to normalize files it wrote.
-- [ ] **T1.6 README command section.** Orch adds the command table and platform status (Windows x64 validated, macOS and Linux not verified) to `README.md`.
-- [ ] **T1.7 Validation V7 (lint load) and V8 (test smoke).**
+- [x] **T1.1 TypeScript projects.** desktop-engineer writes `tsconfig.json` (solution with references) and `tsconfig.shared.json`, `.main.json`, `.preload.json`, `.renderer.json`, `.tests.json`: `strict: true`, `composite`, `emitDeclarationOnly`, output under `node_modules/.cache/tsc`, path aliases `@shared/*`, `@main/*`, `@renderer/*`; `tsconfig.shared.json` with `lib: ["ES2023"]` and `types: []` (R2.4).
+- [x] **T1.2 electron-vite config.** desktop-engineer writes `electron.vite.config.ts` with main, preload and renderer targets, `resolve.alias` for the three aliases per target, the React plugin, CommonJS preload output, and the output layout in design 3.1. The meta-CSP plugin is added in T2.7.
+- [x] **T1.3 Seed files.** desktop-engineer writes `src/main/constants.ts` and `src/shared/ipc/channels.ts` so project references have inputs. Projects without inputs yet (`renderer`, `tests`) are made green by their first files in M4 and M6; until then `tsc -b` may report TS18003 for them and this is recorded, not hidden.
+- [x] **T1.4 Vitest config.** qa-engineer writes `vitest.config.ts` (node and jsdom projects, shared alias table, `globals: false`, setup file registering jest-dom and `cleanup`, network-stub setup, coverage block from design 10) and `tests/config/alias-consistency.test.ts` (R2.2).
+- [x] **T1.5 Lint, format, repository hygiene.** Orch writes `eslint.config.mjs` (flat config, `typescript-eslint`, `react`, `react-hooks`, `jsx-a11y`, boundary `no-restricted-imports` blocks per design 1, `no-restricted-syntax` and globals for R3.1, R4.1, R6.5, R8.4, R8.7, R15.1), `prettier.config.mjs`, `.prettierignore`, `.editorconfig`, `.gitattributes` (LF normalization). Orch runs `pnpm format` once to normalize files it wrote.
+- [x] **T1.6 README command section.** Orch adds the command table and platform status (Windows x64 validated, macOS and Linux not verified) to `README.md`.
+- [x] **T1.7 Validation V7 (lint load) and V8 (test smoke).**
 
 **Expected deliverables.** `tsconfig*.json`, `electron.vite.config.ts`, seeds, `vitest.config.ts`, `tests/config/alias-consistency.test.ts`, `eslint.config.mjs`, `prettier.config.mjs`, `.prettierignore`, `.editorconfig`, `.gitattributes`, README section.
 
@@ -141,17 +157,17 @@ pnpm typecheck
 
 **Agent Skills.** `electron-security`, `typescript-standards`, `cross-platform-packaging`.
 
-**Dependencies.** M1. T2.6 also needs T3.2 (IPC registration) to wire handlers, so the final composition lands after M3.2. Electron API names marked UNVERIFIED in design sections 3 to 6 are checked against the Electron 45.5.0 documentation first (T2.0).
+**Dependencies.** M1. T3.2 requires T2.2 (sender validation) and T3.1. T2.6 requires T2.1 to T2.5 and T3.2 (IPC registration). M2 is "IMPLEMENTED, integration pending: T3.2" until T3.2 is done, and PASSED only after T2.6 to T2.8. Electron API names marked UNVERIFIED in design sections 3 to 6 are checked against the Electron 45.5.0 documentation first (T2.0).
 
 **Tasks.**
 
 - [ ] **T2.0 Electron API verification.** desktop-engineer lists each version-sensitive API in design 3 to 6 (`will-frame-navigate`, `setDevicePermissionHandler`, `registerSchemesAsPrivileged`, `protocol.handle`, `WebFrameMain` properties, `ELECTRON_RENDERER_URL`, preload output name), checks the Electron 45.5.0 docs and the electron-vite 6.0.0 output, and reports page and result in its final message. necro-architect records them in `docs/architecture/electron-api-verification.md`. This is a documented source check, not a runtime claim (R17.2).
 - [ ] **T2.1 Foundations.** `src/main/logging/logger.ts`, `lifecycle/platform-policy.ts`, `lifecycle/app-menu.ts`, plus unit tests.
-- [ ] **T2.2 Security modules.** `security/csp.ts` (`buildCsp`, `buildMetaCsp`), `security/trusted-origins.ts`, `security/sender-validation.ts`, plus unit tests.
+- [ ] **T2.2 Security modules.** `security/csp.ts` (`buildCsp`, `buildMetaCsp`), `security/trusted-origins.ts`, `security/sender-validation.ts`, plus unit tests. **Acceptance criterion (human gate 3, ADR 0003 item 6):** tests prove the production CSP never contains a development-only allowance (`unsafe-inline`, dev origin, websocket origin) and cannot inherit one from the development builder; the development policy never contains `unsafe-eval` or a remote script source, and its `connect-src` is exactly the trusted dev origin and its websocket. Not started.
 - [ ] **T2.3 Protocol.** `protocol/resolve-app-path.ts` (path module injected), `protocol/mime-types.ts`, `protocol/app-protocol.ts` (scheme registration, `protocol.handle`, realpath confinement, 5 MiB bound, response headers), plus unit tests.
 - [ ] **T2.4 Window.** `window/chrome-profile.ts`, `window/window-options.ts`, `window/create-main-window.ts` (the only `new BrowserWindow`), `window/navigation-guards.ts`, `window/permissions.ts`, plus unit tests.
 - [ ] **T2.5 Lifecycle.** `lifecycle/single-instance.ts`, `lifecycle/crash-handlers.ts`, plus unit tests.
-- [ ] **T2.6 Composition root.** `src/main/index.ts` with the fixed startup order (design 2), `resolveLoadTarget`, test user-data override `NECROAMP_E2E_USER_DATA`.
+- [ ] **T2.6 Composition root (requires T3.2).** `src/main/index.ts` with the fixed startup order (design 2), `resolveLoadTarget`, test user-data override `NECROAMP_E2E_USER_DATA`. It imports `registerHandler` and `app-handlers` from T3.2 and is not complete until they exist.
 - [ ] **T2.7 Meta CSP build plugin.** Add the `transformIndexHtml` plugin to `electron.vite.config.ts` that calls `buildMetaCsp({ mode: 'production' })`.
 - [ ] **T2.8 Security gate.** security-reviewer writes `docs/security/desktop-foundation-m2-review.md` covering window, CSP, protocol, navigation, permissions, lifecycle, logging.
 
@@ -165,7 +181,7 @@ pnpm typecheck
 3. `resolveAppPath` rejects every case in design 4 and accepts only `app://renderer` files with allow-listed extensions.
 4. `platform-policy` and `app-menu` are tested for `win32`, `darwin` and `linux` and for an unknown platform (quits).
 5. Only one `new BrowserWindow`, no `shell.openExternal`, `net`, `fetch`, `crashReporter` or `autoUpdater` in `src` (lint and source scan).
-6. `pnpm typecheck`, `pnpm lint`, `pnpm test` pass for the touched projects.
+6. `pnpm typecheck`, `pnpm lint`, `pnpm test` pass for the touched projects. Whole-application `pnpm build` is DEFERRED to T7.0.
 7. Each UNVERIFIED API name has a documented outcome (T2.0). security-reviewer reports zero blockers.
 
 **Validation commands.**
@@ -174,12 +190,11 @@ pnpm typecheck
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
 ```
 
-(`pnpm build` is run by Orch or desktop-engineer; the renderer entry may still be a stub until M4, so only the main and preload bundles are inspected at this stage.)
+`pnpm build` is not run in M2: it needs the renderer entry (T4.6) and CSS (T5.2, T5.3). Main and preload typecheck and unit tests are the M2 evidence. No stub renderer is created.
 
-**Parallelism.** T2.0 first. T2.1, T2.2 and T2.3 are independent pure-module groups and can run in parallel in separate desktop-engineer sessions. T2.4 needs T2.2. T2.5 needs T2.1. T2.6 and T2.7 follow all of them. T2.8 is last. M2 may overlap with M3.1 and M4 (different files, different agents).
+**Parallelism.** T2.0 first. T2.1, T2.2 and T2.3 are independent pure-module groups and can run in parallel in separate desktop-engineer sessions. T2.4 needs T2.2. T2.5 needs T2.1. T2.6 follows T2.1 to T2.5 and T3.2. T2.7 follows T1.2. T2.8 is last. M2 may overlap with M3.1 and M4 (different files, different agents).
 
 ---
 
@@ -189,12 +204,12 @@ pnpm build
 
 **Agent Skills.** `electron-security`, `typescript-standards`.
 
-**Dependencies.** M1 for T3.1. T3.2 and T3.3 need T3.1 and the M2 security modules (`sender-validation.ts`, `trusted-origins.ts`).
+**Dependencies.** M1 for T3.1. T3.2 requires T3.1 and T2.2 (`sender-validation.ts`, `trusted-origins.ts`). T3.3 requires T3.1 only.
 
 **Tasks.**
 
 - [ ] **T3.1 Shared contracts.** `src/shared/ipc/{channels,result,app-info,index}.ts`: `IPC_CHANNELS`, `ipcResultSchema`, `ipcErrorSchema`, error codes, `appInfoRequestSchema`, `appInfoSchema`, `platformSchema`, `appInfoResponseSchema`, all `z.strictObject` and bounded, plus unit tests. No Electron, DOM or Node imports.
-- [ ] **T3.2 Handler registration.** `src/main/ipc/register-handler.ts` (sender check, request parse, handler in try/catch, response parse, no throw across IPC, disposer) and `src/main/ipc/app-handlers.ts`, plus unit tests with an `ipcMain` fake. Wire both into `src/main/index.ts` (completes T2.6).
+- [ ] **T3.2 Handler registration.** `src/main/ipc/register-handler.ts` (sender check, request parse, handler in try/catch, response parse, no throw across IPC, disposer) and `src/main/ipc/app-handlers.ts`, plus unit tests with an `ipcMain` fake. Do not edit `src/main/index.ts`; T2.6 imports these modules and registers them.
 - [ ] **T3.3 Preload bridge.** `src/preload/index.ts`: one frozen object `necroamp.app.getInfo` returning `Promise<unknown>`, `contextBridge.exposeInMainWorld('necroamp', api)`. Unit test with fakes asserts the key set.
 - [ ] **T3.4 Contract review.** necro-architect reviews `src/shared/ipc/**` against ADR 0005 and `shared-ownership-policy.md`; security-reviewer writes `docs/security/desktop-foundation-m3-review.md`.
 
@@ -232,16 +247,16 @@ pnpm test
 
 **Tasks.**
 
-- [ ] **T4.1 Entry files.** `src/renderer/index.html` (`lang="en"`, `<title>NecroAmp</title>`, no meta CSP in source), `main.tsx`, `env.d.ts` (typed `window.necroamp`).
+- [ ] **T4.1 Entry files.** `src/renderer/index.html` (`lang="en"`, `<title>NecroAmp</title>`, no meta CSP in source), `main.tsx` (no CSS import until T5.2 exists), `env.d.ts` (typed `window.necroamp`).
 - [ ] **T4.2 Bridge adapter and store.** `app/bridge/necroamp-client.ts` (`createNecroampClient`, the only reader of `window.necroamp`), `stores/app-info-store.ts` (`createAppInfoStore(client)`), `useAppInfo` hook, plus tests with a fake client.
 - [ ] **T4.3 Strings and layout.** `app/strings/en.ts` (typed constants, including the exact tagline `Code. Listen. Repeat.`), `app/shell-layout.ts` (`REGION_IDS`, `FOUNDATION_LAYOUT`).
 - [ ] **T4.4 Shared components.** `components/control-button`, `region-frame`, `status-text` (props only).
-- [ ] **T4.5 Regions.** For `player`, `playlist`, `equalizer`, `visualization`, `skin-selector`, `github`: `index.ts`, `<name>-region.tsx`, `<name>-view.tsx`, `use-<name>.ts`. Equalizer shows ten labelled band placeholders. Buttons are `aria-disabled` and focusable with visible "Not implemented in this phase" text.
+- [ ] **T4.5 Regions.** For `player`, `playlist`, `equalizer`, `visualization`, `skin-selector`, `github`: `index.ts`, `<name>-region.tsx`, `<name>-view.tsx`, `use-<name>.ts`. Equalizer shows ten labelled band placeholders. Buttons are `aria-disabled` and focusable with visible "Not implemented in this phase" text. View files import their `*.module.css` only after T5.3 creates them.
 - [ ] **T4.6 Shell.** `app/app-shell.tsx`: header with the single `h1` and tagline, `main` with six labelled sections, `data-testid` equal to each region id, "unavailable" state when the bridge is missing (R8.10).
 - [ ] **T4.7 Component tests.** Co-located `*.test.tsx`: six regions, tagline, one `h1`, store states, placeholder activation updates `StatusText`.
-- [ ] **T4.8 Build check.** Orch or qa-engineer runs `pnpm build` (frontend-engineer lacks `pnpm build*`) and records V5 (build part).
+- [ ] **T4.8 Renderer validation.** `pnpm typecheck`, `pnpm lint` and `pnpm test` for the renderer project. The V5 build part is DEFERRED to T7.0 (needs main, preload and renderer entries plus the M5 CSS). Do not add stubs.
 
-**Expected deliverables.** `src/renderer/**` as in design section 1, co-located tests, recorded V5 build result.
+**Expected deliverables.** `src/renderer/**` as in design section 1, co-located tests.
 
 **Requirements traceability.** R8 (initial window: tagline, six regions, test ids, bridge-missing state, min size 800x600 layout), R9 (landmarks, names, focus order, one `h1`, `lang`), R10 (state, injected client, no audio state), R2.3 (feature isolation), R4.9 (single adapter).
 
@@ -250,7 +265,7 @@ pnpm test
 2. No `AudioContext`, `requestAnimationFrame`, `style` prop, remote URL or `window.necroamp` access outside the adapter (lint and source scan).
 3. User-facing strings come only from `strings/en.ts`.
 4. Features import no other feature's internals; no `../../../` chains.
-5. `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` pass; `out/renderer/index.html` exists and contains the meta CSP (V5).
+5. `pnpm typecheck`, `pnpm lint`, `pnpm test` pass for the renderer. M4 is "IMPLEMENTED, integration pending: T5.2, T5.3, T7.0" until the build check at T7.0 shows `out/renderer/index.html` with the meta CSP (V5).
 
 **Validation commands.**
 
@@ -258,7 +273,6 @@ pnpm test
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
 ```
 
 **Parallelism.** T4.1 to T4.4 in parallel (disjoint files); T4.5 after T4.3 and T4.4; T4.6 after T4.5; T4.7 alongside each piece; T4.8 last. M4 runs in parallel with M2 and M3 (different agent), and with M5 token files.
@@ -271,7 +285,7 @@ pnpm build
 
 **Agent Skills.** `skin-development`, `typescript-standards`. art-director: `skin-development`.
 
-**Dependencies.** Token and global CSS files (T5.1, T5.2) have no dependency beyond M1 and may start in parallel with M4. Region CSS Modules (T5.3) need M4.5. Contrast checks need the final tokens.
+**Dependencies.** Token and global CSS files (T5.1, T5.2) have no dependency beyond M1 and may start in parallel with M4. Region CSS Modules (T5.3) need M4.5. Contrast checks need the final tokens. T5.2 requires T4.1. T5.3 requires T4.5. The CSS import statements in `main.tsx` and in the views are added by T5.2 and T5.3 and are part of those tasks.
 
 **Tasks.**
 
@@ -289,7 +303,7 @@ pnpm build
 1. No literal color outside `tokens.css`; no inline style, no `style` prop, no `@import`, no remote `url()` (lint, source scan).
 2. Contrast tests pass for all declared pairs.
 3. Region ids, `data-part` hooks and `FOUNDATION_LAYOUT` are unchanged by styling (a Skin Engine layout can reference them later).
-4. CSP unchanged: `style-src 'self'` still sufficient in the built app (checked in M7 by CSP-violation listener).
+4. CSP unchanged: `style-src 'self'` still sufficient in the built app (checked in M7 after T7.0 by CSP-violation listener).
 5. If T5.5 runs, it records every gap as a future-design item and none as a foundation change.
 
 **Validation commands.**
@@ -298,8 +312,9 @@ pnpm build
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
 ```
+
+`pnpm build` is DEFERRED to T7.0.
 
 **Parallelism.** T5.1, T5.2 and T5.4 in parallel and early; T5.3 after M4.5; T5.5 after T5.3 and independent of the rest.
 
@@ -315,7 +330,7 @@ pnpm build
 
 **Tasks.**
 
-- [ ] **T6.1 Property tests** (`*.property.test.ts`, at least 100 runs, seed reported): `resolveAppPath` never throws and never escapes under `path.posix` and `path.win32`; origin check; `buildCsp` (production never contains dev allowance); IPC payload parser and `registerHandler`; platform policy (unknown platform quits); `resolveLoadTarget`; menu builder (no unknown roles); contrast function.
+- [ ] **T6.1 Property tests** (`*.property.test.ts`, at least 100 runs, seed reported): `resolveAppPath` never throws and never escapes under `path.posix` and `path.win32`; origin check; `buildCsp` (production never contains dev allowance, for every input including a dev origin and mode flags; development never contains `unsafe-eval` or remote scripts; human gate 3); IPC payload parser and `registerHandler`; platform policy (unknown platform quits); `resolveLoadTarget`; menu builder (no unknown roles); contrast function.
 - [ ] **T6.2 Static and boundary tests.** `tests/static/source-policy.test.ts` (single `new BrowserWindow`, no literal channel names, no `shell.openExternal`, `AudioContext`, `requestAnimationFrame`, `crashReporter`, `autoUpdater`, `net`, `fetch`, no `style` prop), `tests/lint-rules/*.test.ts` (each boundary rule fails on a fixture through the ESLint `Linter` API).
 - [ ] **T6.3 Integration tests.** Protocol handler against a fake `fs` for the escape case, and one real temporary directory with a symlink where the platform permits (reported SKIPPED with reason on Windows without privilege). Preload plus `registerHandler` round trip with fakes.
 - [ ] **T6.4 jsdom accessibility tests.** Names, roles, one `h1`, `lang`, focus order, `aria-disabled` placeholder behavior (R9). These complement, and do not replace, the axe scan in M7.
@@ -352,16 +367,17 @@ pnpm test:coverage
 
 **Agent Skills.** `testing-strategy`, `electron-security`, `cross-platform-packaging` (build output only; no installers).
 
-**Dependencies.** M6 and a passing `pnpm build`.
+**Dependencies.** M6 and the tasks in the dependency table (T2.6, T2.7, T3.3, T4.6, T5.2, T5.3), which T7.0 checks.
 
 **Tasks.**
 
+- [ ] **T7.0 Whole-application build validation (V5 build part).** Also serves as the esbuild functionality validation accepted in human gate 4 (S1). Precondition: `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/index.html`, `main.tsx` and every imported CSS file exist. Orch (or qa-engineer) runs `pnpm build` once. Record the exit code, `out/main/index.js`, `out/preload/index.js` and `out/renderer/index.html`, and the meta CSP. If a precondition is missing, record "BLOCKED by T.." and stop. Do not create stubs. M2, M4 and M5 are reported PASSED only after this task passes.
 - [ ] **T7.1 Playwright setup.** qa-engineer writes `playwright.config.ts` (`workers: 1`, `retries: 0`, traces on failure) and the launch fixture (`_electron.launch` on `out/main/index.js`, `ELECTRON_RENDERER_URL` removed, `NECROAMP_E2E_USER_DATA` temp dir, teardown on failure, global-setup check that `out/main/index.js` exists and is current).
 - [ ] **T7.2 Smoke and security E2E.** Title, tagline, six regions, platform equals host; live web preferences; `require`, `process`, `Buffer`, `ipcRenderer` undefined in the renderer; bridge key set; effective CSP by header and meta; inline script and remote fetch blocked; all requests on `app://renderer`; navigation to `https:`, `http:`, `file:`, `data:`, `javascript:` stays on the app URL; `window.open` returns null and opens no window; permission request denied.
 - [ ] **T7.3 Lifecycle E2E.** Second instance exits and focuses the first window; last-window-close behavior for the host platform; quit within 5 seconds; layout bounding boxes at 800x600 and 1920x1080; keyboard Tab order.
 - [ ] **T7.4 Accessibility scan (V10).** `@axe-core/playwright` against the real page, with the documented fallback (inject `axe-core`, call `axe.run`) if the constructor does not accept an Electron `Page`. Zero serious or critical violations; incomplete checks recorded. Imports restricted to `tests/e2e` (E1).
-- [ ] **T7.5 Production build validation.** release-engineer runs `pnpm build` once and writes `docs/release/desktop-foundation-build-validation.md`: output layout, preload is one CommonJS file, built `index.html` has the meta CSP and no inline script, no source maps shipped by default, no mention of `axe` anywhere in `out/` (E1). Packaging, installers and `electron-builder` are not touched (D10).
-- [ ] **T7.6 Interactive development run.** Human runs `pnpm dev`, confirms the window appears, no CSP violation beyond the accepted dev allowance (N2), then closes it. Orch records V4 and V5 (dev part).
+- [ ] **T7.5 Production build validation.** release-engineer runs `pnpm build` once and writes `docs/release/desktop-foundation-build-validation.md`: output layout, preload is one CommonJS file, built `index.html` has the meta CSP and no inline script, no source maps shipped by default, no mention of `axe` anywhere in `out/` (E1). **Validation note (human gate 4, S1):** confirm esbuild works in the real build (the build exits 0 and produces the three outputs); this is the functional check for the esbuild `postinstall`, which was not directly observed. Packaging, installers and `electron-builder` are not touched (D10).
+- [ ] **T7.6 Interactive development run.** Human runs `pnpm dev`, confirms the window appears, no CSP violation beyond the accepted dev allowance (N2), then closes it. Validation duty (gate 3): record whether `unsafe-inline` for script and style is actually needed; remove any allowance that is not. Orch records V4 and V5 (dev part).
 - [ ] **T7.7 Final matrix run.** Orch runs `pnpm test:coverage`, `pnpm build`, `pnpm test:e2e` and `pnpm licenses` (V11) once each and records PASSED, FAILED or NOT VERIFIED per platform and per kind (R16.3). macOS and Linux rows read NOT VERIFIED.
 
 **Expected deliverables.** `playwright.config.ts`, `tests/e2e/**`, `docs/release/desktop-foundation-build-validation.md`, run record with V4, V5, V9, V10, V11.
@@ -466,5 +482,8 @@ git status --short
 - N6 cross-cutting files outside the explicit D13 list (`.editorconfig`, `.gitattributes`, README section, `.prettierignore`).
 - N7 `NECROAMP_E2E_USER_DATA` test input.
 - N10 `.npmrc` unreadable by security-reviewer; mitigation is a one-line file quoted by Orch.
-- Execution policy for `pnpm.ps1` on the host, if blocked: human decision (design 16).
+- `strictDepBuilds: true` is an approved deviation from the original R1.6 default (design E5).
+- E1: MPL-2.0 exception for `axe-core` and `@axe-core/playwright` is human-approved, dev and accessibility test only.
+- Execution policy: `pnpm.cmd` and `npm.cmd` are used; the policy is not changed (design E6).
 - Branch point for `quality-review` (`base_ref`) and the human commit it requires (T8.1).
+

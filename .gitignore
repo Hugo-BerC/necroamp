@@ -158,3 +158,7 @@ vite.config.ts.timestamp-*
 
 # Kiro workflow scratch artifacts (evidence preserved under docs/engineering/reviews/)
 /.agents/
+
+# Test output
+/test-results/
+/playwright-report/

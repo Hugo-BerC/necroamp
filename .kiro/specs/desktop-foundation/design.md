@@ -1,6 +1,6 @@
 # Design: desktop-foundation (Phase 05)
 
-Status: conditionally approved by the human; amended with the N4 license exception (E1), the dependency lifecycle policy (9.3), executable validation tasks (section 15), host prerequisites (section 16) and Appendix A. `tasks.md` implements the plan. Final human approval of this amended design and of `tasks.md` is pending.
+Status: **APPROVE WITH FIXES, applied.** The human approved requirements, this design, the artistic direction, the dependency candidates (as candidates, accepted only by V1 to V11) and milestones M0 to M8, subject to the corrections in decision record addendum E5 to E8 and in `tasks.md`. D1 to D14 are unchanged. Earlier amendments: N4 license exception (E1), lifecycle policy (9.3), validation tasks (section 15), host prerequisites (section 16), Appendix A. Gate H0 has passed (section 16 host record). Pending gates: V1 to V11 results, the installation approval (section 14), final human approval after M8.
 Inputs: `requirements.md` (R1 to R17), `preflight.md`, steering (`product`, `tech`, `structure`, `kiroween`), `electron-security` skill and references, `testing-strategy` skill, `docs/engineering/package-script-policy.md`, `docs/engineering/shared-ownership-policy.md`, ADR 0001, and the human-approved decisions D1 to D14.
 
 ## 0. Overview, evidence labels and honesty notes
@@ -168,7 +168,7 @@ frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; media-src 'none'; m
 - `'self'` is expected to match `app://renderer` because the scheme is registered `standard` (DOCUMENTED Chromium behavior for standard schemes; UNVERIFIED for the pinned build, E2E R5.7 and the CSP-effective test catch a mismatch).
 - Style: D3 is CSS Modules. Vite emits a linked stylesheet in production, so `style-src 'self'` suffices and no inline `<style>` or `style` attribute is used. React's `style` prop is banned by lint (`react/forbid-dom-props` for `style`) and by the source-scan test. Dynamic values are written to CSS custom properties with `element.style.setProperty(...)`. Script-driven CSSOM changes are not blocked by `style-src` (CSP3 DOCUMENTED); the E2E test sets one property and checks that no CSP violation is reported.
 - Delivery (R5.1): the `app://` handler sets `Content-Security-Policy` on every response (not only HTML). A `<meta http-equiv>` copy is injected into `index.html` at build time by a small inline Vite plugin in `electron.vite.config.ts` (`apply: 'build'`, `transformIndexHtml`) that calls `buildMetaCsp({ mode: 'production' })`, so there is one source of truth. The source `index.html` contains no meta CSP, because it would block the dev server. A unit test builds the meta string and compares it to the header string minus the ignored directives.
-- Development: the header is added by `session.webRequest.onHeadersReceived`, filtered to URLs whose origin equals the dev origin. The dev policy is the production policy plus `connect-src <devOrigin> ws://<dev host:port>` and `script-src 'self' 'unsafe-inline'`, `style-src 'self' 'unsafe-inline'`. The two `unsafe-inline` allowances exist only because Vite's React Fast Refresh preamble and CSS hot update inject inline script and style in dev (UNVERIFIED for the pinned plugin versions; if they are not needed, remove them). **This is a deviation from R5.5, which allowed only the two dev origins.** It is dev-only, produced by one option of the builder, covered by a test that the production output never contains it, and listed in section 13 for human acceptance. E2E never runs in dev mode.
+- Development: the header is added by `session.webRequest.onHeadersReceived`, filtered to URLs whose origin equals the dev origin. The dev policy is the production policy plus `connect-src <devOrigin> ws://<dev host:port>` and `script-src 'self' 'unsafe-inline'`, `style-src 'self' 'unsafe-inline'`. The two `unsafe-inline` allowances exist only because Vite's React Fast Refresh preamble and CSS hot update inject inline script and style in dev (UNVERIFIED for the pinned plugin versions; if they are not needed, remove them). **This is a deviation from R5.5, which allowed only the two dev origins. ACCEPTED WITH CONDITIONS by the human on 2026-11-26 (N2, ADR 0003 item 6):** `unsafe-inline` only where runtime validation shows Vite HMR or React Fast Refresh needs it (remove any allowance that is not required); development connections only to the exact trusted local dev origin; never `unsafe-eval`; never remote scripts; the production CSP contains no development exception; all Electron security invariants stay. It is dev-only, produced by one option of the builder, and covered by tests (T2.2, T6.1) proving the production output cannot inherit a development allowance. E2E never runs in dev mode.
 
 ### 3.5 Filesystem, network, secrets (R15)
 
@@ -427,7 +427,7 @@ Settings relevant to dependency scripts, as documented for pnpm 10.x:
 |---|---|---|
 | `onlyBuiltDependencies` | List of packages allowed to run `preinstall`, `install` and `postinstall`. Default with no list: all dependency scripts are blocked. Entries may be version-qualified (`esbuild@0.28.0`, `a@1 \|\| 2`) since v10.19.0. | **Use.** Version-qualified entry for each approved package. |
 | `ignoredBuiltDependencies` | Added in v10.1.0. Packages whose scripts never run and that raise no warning. | **Use** for `fsevents`. |
-| `strictDepBuilds` | Added in v10.3.0. **Default `false`.** When `true`, install exits non-zero if any dependency has an unreviewed build script. | **Set `true`.** This corrects the earlier text of this design, which assumed a true default. |
+| `strictDepBuilds` | Added in v10.3.0. **Default `false`.** When `true`, install exits non-zero if any dependency has an unreviewed build script. | **Set `true`. Explicitly approved deviation (E5) from the original R1.6 default requirement**, which relied on pnpm's default behavior. Deny-by-default lifecycle execution is preserved and tightened: nothing runs unless listed in `onlyBuiltDependencies`, and an unlisted script now fails the install instead of being skipped with a warning. `requirements.md` is not edited; the addendum is the record. |
 | `allowBuilds` | Added in v10.26.0. A map that replaces and deprecates `onlyBuiltDependencies` and `ignoredBuiltDependencies`. | Not used first. **Fallback:** if pnpm 10.34.9 ignores, rejects or warns about the two preferred settings, move the same content to `allowBuilds` (one-file change, same allow and deny set). |
 | `neverBuiltDependencies` | Deny list. Without `onlyBuiltDependencies` it implies all other packages are allowed. | Not used. |
 | `dangerouslyAllowAllBuilds` | Runs every dependency script. | **Never set.** |
@@ -470,7 +470,7 @@ No unrestricted lifecycle scripts are enabled. No step in this design or in `tas
 
 | Pair or claim | Evidence | Status |
 |---|---|---|
-| Node 24 with the toolchain | Registry `engines`: vitest 5.1.2 `^24.0.0`, jsdom 31.0.1 `^24.15.0`, vite 7.3.8 and electron-vite 6.0.0 `^20.19.0 \|\| >=22.12.0`, eslint 9.39.5 `>=21.1.0`, @axe-core/playwright `>=22.12.0`, @playwright/test `>=20` | VERIFIED (metadata). Host Node is not installed on this machine (`node` and `pnpm` not on PATH), so nothing ran. |
+| Node 24 with the toolchain | Registry `engines`: vitest 5.1.2 `^24.0.0`, jsdom 31.0.1 `^24.15.0`, vite 7.3.8 and electron-vite 6.0.0 `^20.19.0 \|\| >=22.12.0`, eslint 9.39.5 `>=21.1.0`, @axe-core/playwright `>=22.12.0`, @playwright/test `>=20` | VERIFIED (metadata). Host Node v24.22.3 x64 is installed (section 16 host record, H0 passed) and satisfies `>=24.15.0 <25`. No tool of the matrix has run yet. |
 | electron-vite 6.0.0 with vite 7.3.8 | electron-vite `peerDependencies.vite` `^6 \|\| ^7 \|\| ^8` | VERIFIED (metadata). Behavior UNVERIFIED until first build. |
 | electron-vite 6.0.0 with Electron 45.5.0 | electron-vite declares no `electron` peer | UNVERIFIED. First `pnpm build` and `pnpm dev` are the proof. |
 | plugin-react 5.2.0 with vite 7.3.8 | plugin `peerDependencies.vite` includes `^7` | VERIFIED (metadata). |
@@ -563,10 +563,32 @@ Run sequence. Small, well-defined tasks run as direct single-agent runs, not thr
 | 4 | Orch | `pnpm install` with the approved allowlist, generate lockfile, then `pnpm install --frozen-lockfile` check | Human approval already given in run 0; Orch halts on any unapproved build script |
 | 5 | qa-engineer | `vitest.config.ts`, setup files, alias test. Needed before run 6 so co-located tests can run | `pnpm test` runs (zero tests allowed via `--passWithNoTests` only in this run, not in the script) |
 | 6 | desktop-engineer | `src/shared/ipc`, `src/main`, `src/preload`, co-located tests | `pnpm typecheck`, `pnpm lint`, `pnpm test` pass; security-reviewer reviews IPC, window, CSP, protocol |
-| 7 | frontend-engineer | Renderer shell, regions, store, adapter, strings, tokens, co-located tests | `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` (build is run by Orch or qa-engineer because frontend-engineer lacks `pnpm build*`) |
+| 7 | frontend-engineer | Renderer shell, regions, store, adapter, strings, tokens, co-located tests | `pnpm.cmd typecheck`, `lint`, `test` for the renderer project. `pnpm.cmd build` is DEFERRED to T7.0 (E7). |
 | 8 | qa-engineer | Property tests, `playwright.config.ts`, E2E, axe, coverage thresholds, traceability file `docs/testing/desktop-foundation-traceability.md` | `pnpm test:coverage`, `pnpm build`, `pnpm test:e2e` pass |
 | 9 | necro-architect, security-reviewer | Gate review, zero open blockers (R15.5) | Human final approval |
 
+### Task-level dependencies (E7)
+
+Milestones are planning groups, not completion gates for each other. Ordering that crosses milestones is expressed between tasks. Two states are kept apart:
+
+- **Implementation complete:** the task's files exist, their unit tests pass, and `pnpm.cmd typecheck`, `lint` and `test` pass for the touched projects.
+- **Integration validated:** the cross-milestone consumers exist and the combined result (for example `pnpm.cmd build`) has run.
+
+A milestone is reported PASSED only when its own tasks and every cross-milestone integration task it owns or depends on are complete. Until then it is "IMPLEMENTED, integration pending", with the open tasks named. No stub, placeholder entry point or empty CSS file is created to make an intermediate command pass. A command that cannot run yet is recorded "DEFERRED to Txx".
+
+| Task | Requires | Reason |
+|---|---|---|
+| T3.2 | T2.2, T3.1 | Handlers use `isTrustedSender` and `trusted-origins` (R4.4). |
+| T2.6 | T2.1 to T2.5, T3.2 | The composition root registers the IPC handlers from T3.2. |
+| T2.7 | T1.2 | Config plugin only. |
+| T3.3 | T3.1 | Preload reads `IPC_CHANNELS` only. |
+| T4.2 | T3.1 | The adapter parses `appInfoResponseSchema`. |
+| T5.2 | T4.1 | `main.tsx` imports `global.css` once the file exists. |
+| T5.3 | T4.5 | View CSS Modules are imported by the view files once they exist. |
+| T7.0 (whole-application build) | T2.6, T2.7, T3.3, T4.6, T5.2, T5.3 | `electron-vite build` needs main, preload and renderer entries and every imported CSS file. |
+| T7.1 to T7.7 | T7.0 | E2E runs against the built app. |
+
+Renderer CSS imports are added by the same task that creates the CSS file (T5.2, T5.3). Before then, M4 views carry no CSS import, and M4 validation is limited to `typecheck`, `lint` and `test`.
 `pnpm dev` is run only interactively by the human, because it never exits (preflight B).
 
 ## 12. Requirements traceability
@@ -598,10 +620,10 @@ Per-criterion deviations or partial coverage are in section 13 (N1 to N7).
 Numbered N for items needing human attention; R for risks.
 
 - **N1. Dependency matrix: candidates.** Section 9 pins exact versions resolved from the registry as implementation candidates. Accepted only through V1 to V11 (section 15). Human approves the list as candidates, the Vite 7 choice over Vite 8 (avoids MPL-2.0 `lightningcss`), the `esbuild` approval in principle, and the denial of `fsevents`.
-- **N8. Host has no Node or pnpm on PATH.** BLOCKING gate H0 (section 16). Human installs with Appendix A (Node >=24.15.0, pnpm 10.34.9). Behavior of the matrix is untested until V1 to V11 run.
+- **N8. RESOLVED: host tools installed, gate H0 passed** (section 16 host record: PowerShell 7.6.10, Node v24.22.3 x64 win32, npm.cmd 11.19.1, pnpm.cmd 10.34.9, git 2.56.1.windows.1). Behavior of the dependency matrix is untested until V1 to V11 run.
 - **N9. RESOLVED (documentation level).** pnpm 10.x documents `onlyBuiltDependencies`, `ignoredBuiltDependencies` and `strictDepBuilds` (default `false`, so it is set explicitly). Behavior on exactly 10.34.9 is confirmed by V2. Fallback `allowBuilds` (9.3).
 - **N10. `.npmrc` is unreadable by agents.** Every agent has a read deny on `**/.npmrc`, including security-reviewer, which D13 and policy 4.2 expect to review it. Mitigation in this design: `.npmrc` holds only `engine-strict=true`, and the orchestrator quotes its content in the review request. Human confirms.
-- **N2. Dev CSP deviates from R5.5.** Dev allows `'unsafe-inline'` for script and style, only if the pinned Vite and React plugin require it. Accept or require another approach (for example a hash or nonce plugin).
+- **N2. Dev CSP deviates from R5.5. (ACCEPTED WITH CONDITIONS, 2026-11-26; see section 5 and ADR 0003.)** Dev allows `'unsafe-inline'` for script and style, only if the pinned Vite and React plugin require it. Accept or require another approach (for example a hash or nonce plugin).
 - **N3. R4.8 is not fully testable by E2E.** The renderer cannot call an unregistered channel without a generic bridge, which R4.6 forbids. Coverage is unit-level on the registration helper plus the bridge key-set assertion. Accept.
 - **N4. RESOLVED by exception E1.** `@axe-core/playwright` and `axe-core` are MPL-2.0, outside R1.7's permissive list. The human approved a narrow exception (decision record addendum): development and accessibility testing only, excluded from production bundles and installers, notices preserved, NecroAmp stays MIT, not generalized. Verified by V10 and V11.
 - **N5. Extra 95 percent coverage targets** for `resolve-app-path.ts` and `csp.ts` go beyond D12's wording.
@@ -623,11 +645,11 @@ Numbered N for items needing human attention; R for risks.
 
 Steps:
 
-1. **Install the host tools (gate H0, section 16).** Node >=24.15.0 and pnpm 10.34.9 are not on PATH on this machine. The human follows Appendix A.
+1. **Host tools (gate H0, section 16): PASSED.** Node v24.22.3 and pnpm 10.34.9 are installed and verified. Do not reinstall.
 2. **Re-check the matrix.** The implementation re-reads registry metadata for the section 9.1 versions (the optional read-only block below) and stops on any difference. It records the result in `docs/architecture/dependency-versions.md`.
 3. Human reviews and approves: the exact version list in 9.1 as candidates; the install-script allowlist below. The MPL-2.0 decision for axe-core is already given (E1, N4) and is not asked again.
 4. security-reviewer reviews `.npmrc`, `pnpm-workspace.yaml`, `package.json` scripts and dependency list (policy 4.2).
-5. Orchestrator runs `pnpm install` (not `--frozen-lockfile` the first time) in the repository root, with `strictDepBuilds` at default so an unapproved build script fails the install. It then runs `pnpm install --frozen-lockfile` to confirm the lockfile is in sync (R1.5).
+5. Orchestrator runs `pnpm.cmd install` (not `--frozen-lockfile` the first time) in the repository root, with `strictDepBuilds: true` (E5) so an unapproved build script fails the install. It then runs `pnpm install --frozen-lockfile` to confirm the lockfile is in sync (R1.5).
 6. If the install fails on an unlisted build script, stop. The package goes back to step 3 for human approval. Never set `dangerouslyAllowAllBuilds` and never approve "all".
 7. Orchestrator records the install result (versions installed, scripts that ran) in the run notes for the Kiro write-up.
 
@@ -688,11 +710,25 @@ Rules for a failing task:
 | V10 | The accessibility scan runs against the Electron renderer | `pnpm test:e2e` axe spec | `AxeBuilder` (or the fallback: inject `axe-core` and call `axe.run`) completes. Zero serious or critical violations. The result is recorded, including incomplete checks. | qa-engineer (M7) | Constructor incompatible with Electron `Page`: use the documented fallback (same MPL-2.0 package). If axe 4.14.1 fails on Chromium of Electron 45: nearest `axe-core` and `@axe-core/playwright` pair. |
 | V11 | Licenses of the resolved tree, including transitive packages | `pnpm licenses list --prod --json` and `pnpm licenses list --dev --json` (flags confirmed with `pnpm licenses list --help`), plus `Select-String -Path out -Pattern 'axe-core' -Recurse` | The production dependency graph contains only permissive licenses. The only non-permissive packages in the development graph are `axe-core` and `@axe-core/playwright` (N4 exception) and nothing under `out/` mentions axe. Any other copyleft or unknown license is reported and stops the gate. | Orch (M0 after install, M7 after build, M8 final) | Replace or drop the offending package only. No generalization of the N4 exception. |
 
-Status of every row at the time of this design: **PENDING**. No row has run, because the host has no Node or pnpm (section 16).
+Status of every row: **PENDING**, except the host-tool part of V1, which H0 already satisfied (Node v24.22.3 x64, pnpm 10.34.9). V1 is recorded PASSED when Orch re-runs `where.exe` as T0.1 evidence. A row is PASSED only with its command output recorded in `docs/architecture/dependency-versions.md`.
 
 ## 16. Host environment prerequisites (blocking gate H0)
 
-`node` and `pnpm` were reported unavailable on PATH (N8). **H0 blocks every implementation task from M0 onward, except the documentation tasks in M0 that need no host tools.** Nothing in M1 to M8 starts until H0 passes.
+**H0: PASSED.** Host record, verified from the Kiro Agent Host (each check run once):
+
+| Check | Result |
+|---|---|
+| PowerShell | 7.6.10 |
+| Node.js | v24.22.3, x64 win32 |
+| npm.cmd | 11.19.1 |
+| pnpm.cmd | 10.34.9 |
+| git | 2.56.1.windows.1 |
+| `npm.cmd ping` | OK (PONG 367ms) |
+| `pnpm.cmd view pnpm@10.34.9 version` | OK, no TLS errors |
+
+Registry access was verified through npm and pnpm, independently of `Invoke-RestMethod` (an earlier `UNABLE_TO_VERIFY_LEAF_SIGNATURE` did not recur). Do not reinstall host tools.
+
+**PowerShell convention.** Every `npm` or `pnpm` command in this design, in `tasks.md` and in Appendix A is run as `npm.cmd` or `pnpm.cmd` on this host. The execution policy is not changed, TLS validation is never disabled, and no proxy, certificate or machine-specific environment configuration enters the repository. `.npmrc` stays `engine-strict=true` only.
 
 **Shell.** PowerShell 7 (`pwsh`) is the working shell. It passed the Kiro shell smoke test. Commands in this design are PowerShell 7 syntax.
 
@@ -718,12 +754,12 @@ Status of every row at the time of this design: **PENDING**. No row has run, bec
 
 Main-process source must not use APIs that exist only in the host Node, and tests must not assume the two versions are equal.
 
-**Gate H0 checklist (all must hold, recorded in the run notes).**
+**Gate H0 checklist (all six PASSED, see the host record above).**
 
 1. `pwsh` is version 7 or newer.
 2. `node --version` returns `v24.x` with `x >= 15` and `process.arch` is `x64` (V1).
 3. `pnpm --version` returns `10.34.9` (V1), or the human has approved a different 10.x pin.
-4. `pnpm` runs from PowerShell 7 without an execution-policy error, or `pnpm.cmd` is the human-approved alternative and scripts below use it consistently.
+4. PASSED: `pnpm.cmd` and `npm.cmd` run from PowerShell 7 with the execution policy unchanged. The `.ps1` shims are not used.
 5. `https://registry.npmjs.org/` is reachable from the shell (Appendix A.6).
 6. The human has recorded the approvals in section 14 (versions, N4 exception, lifecycle allowlist).
 
@@ -758,6 +794,11 @@ D1 to D14 above are unchanged. The following decisions were taken by the human i
 | E2 | pnpm 10 retained (10.34.9). Lifecycle policy: `onlyBuiltDependencies` and `ignoredBuiltDependencies` with `strictDepBuilds: true`; esbuild approved in principle (exact version and script verified by V2); electron official binary download approved in principle with an on-demand mechanism; `fsevents` denied; all other dependency scripts denied unless explicitly approved; `dangerouslyAllowAllBuilds` never set; no execution-policy bypass. | 9.3, 14 |
 | E3 | Section 9.1 versions are implementation candidates. Compatibility is accepted only by executed validation tasks V1 to V11, with smallest-change fallbacks. | 9, 15 |
 | E4 | Host Node.js and pnpm are a blocking prerequisite (H0). The human installs; agents do not install global software or change system configuration. Host Node and Electron-embedded Node are distinguished. | 16, Appendix A |
+| E5 | **Explicit deviation from the original R1.6 default requirement:** `strictDepBuilds: true` is set in `pnpm-workspace.yaml`. Deny-by-default lifecycle execution is preserved (E2). `requirements.md` is not edited. | 9.3, 9.5, 14 |
+| E6 | Gate H0 passed on the host record in section 16. `npm.cmd` and `pnpm.cmd` are used in PowerShell. No execution-policy change, no TLS bypass, no proxy or certificate configuration in the repository. | 16, Appendix A |
+| E7 | **Task-level dependencies replace circular milestone completion.** T2.6 requires the IPC registration from T3.2. T3.2 requires sender validation from T2.2. Renderer build validation requires the main, preload and renderer entry points. Renderer CSS imports require the M5 files. See section 11, "Task-level dependencies". | 11 |
+| E8 | Human approval status: requirements, design, artistic direction, dependency candidates and M0 to M8 approved with fixes. E1 (MPL-2.0, `axe-core` and `@axe-core/playwright`, dev and accessibility test only) is human-approved and unchanged. | header, 9.1, 9.5 |
+| E9 | **Scoped exception E-ESM-1 to "ES modules everywhere" (`tech.md`), module-system review verdict VALID WITH EXCEPTION. Approved by the human on 2026-11-26; `tech.md` is amended only by the orchestrator (text in `docs/architecture/tech-md-amendment.md`).** Source stays ES modules with named exports. Main and preload build outputs are CommonJS (`out/main/index.js`, one self-contained `out/preload/index.js`), the renderer is browser ES modules, root `package.json` has no `"type": "module"`, tool configs use `.mjs`. Changing the format, extensions or `type` field needs an ADR. Review again when Electron allows ESM preloads under `sandbox: true` or when Electron or electron-vite is re-pinned. Open gates for M1 completion: build produces the three outputs, a bridge-present test under `sandbox: true`, a check of `electron.vite.config.ts` loading without a `type` field, and a check that ESM-only main dependencies load from the CJS main. Evidence limit: Electron and electron-vite behavior recalled from documentation, not re-fetched, and no build existed to test. ADRs 0002 to 0005 are written (`docs/adr/`). | 1 (Module format), ADR 0002 |
 
 ## Responses to review
 
@@ -766,6 +807,10 @@ No review of this design exists yet, so none are recorded.
 ## Appendix A: Host setup commands (human operator, PowerShell 7)
 
 Referenced from M0 in `tasks.md`. Run in an ordinary (non-elevated) PowerShell 7 window unless a step says otherwise. **The human runs the install steps (A.3, A.4).** Agents run only the read-only checks (A.1, A.2, A.5, A.6, A.7). Do not use `-ExecutionPolicy Bypass`. Versions below match section 9.1 (`>=24.15.0 <25`, pnpm `10.34.9`); if `winget` lists a different 24.x, any 24.x with x >= 15 satisfies the pin.
+
+**A.0 Installed host record (H0 PASSED, nothing to install)**
+
+PowerShell 7.6.10; Node v24.22.3 x64 win32; npm.cmd 11.19.1; pnpm.cmd 10.34.9; git 2.56.1.windows.1; `npm.cmd ping` OK (PONG 367ms); `pnpm.cmd view pnpm@10.34.9 version` OK; no TLS errors. Use `npm.cmd` and `pnpm.cmd` for every command below. Do not change the execution policy, disable TLS validation, or add proxy, certificate or machine-specific environment configuration to the repository. A.3 and A.4 are retained as reference only.
 
 **A.1 Confirm the shell**
 
@@ -781,7 +826,7 @@ Expected: major version 7 or higher.
 Get-Command node, pnpm, corepack, winget -ErrorAction SilentlyContinue | Format-Table Name, Source, Version -AutoSize
 ```
 
-**A.3 Install Node.js 24 (choose one option)**
+**A.3 Install Node.js 24 (reference only: ALREADY INSTALLED, do not reinstall)**
 
 Option 1, winget (UAC prompt expected):
 
@@ -801,7 +846,7 @@ Get-FileHash .\node-v24.15.0-x64.msi -Algorithm SHA256
 
 Replace the file name with the file you downloaded.
 
-**A.4 Install pnpm 10.34.9 (choose one option)**
+**A.4 Install pnpm 10.34.9 (reference only: ALREADY INSTALLED, do not reinstall)**
 
 Option 1, corepack (ships with Node 24; the `enable` step writes shims into the Node install directory and can need an elevated window):
 
@@ -833,7 +878,7 @@ Get-ExecutionPolicy -List
 
 Expected: `v24.<15 or higher>.<n>`; `x64 win32`; `10.34.9`; the paths you expect; `https://registry.npmjs.org/`. If PowerShell reports "running scripts is disabled" for `pnpm.ps1`, stop and tell the orchestrator. Do not bypass it. The human either runs `pnpm.cmd` instead, or changes the policy for the `CurrentUser` scope on their own authority.
 
-**A.6 Verify registry access and the pnpm 10 pin (read-only)**
+**A.6 Verify registry access and the pnpm 10 pin (read-only). Preferred: `npm.cmd ping` and `pnpm.cmd view pnpm@10.34.9 version` (both PASSED). The `Invoke-RestMethod` lines below are optional and not the access proof.**
 
 ```powershell
 (Invoke-RestMethod https://registry.npmjs.org/pnpm).'dist-tags'

@@ -30,7 +30,8 @@ Only Node.js 24 LTS and pnpm 10 are fixed. Electron and every other library vers
 ## Language and code rules
 
 - TypeScript strict mode, no `any` without a justifying comment. Prefer `unknown` plus Zod parsing at boundaries.
-- ES modules everywhere. Named exports; avoid default exports except where a tool requires them.
+- ES modules for all TypeScript application source. Named exports; avoid default exports except where a tool requires them.
+- Scoped exception E-ESM-1 (ADR 0002 section 6): the Electron main and sandboxed preload build outputs may be CommonJS, because a sandboxed preload must be a single CommonJS file. Renderer output stays ES modules. Configuration files that are ES modules use an explicit `.mjs` extension, and `package.json` has no `"type": "module"`. `sandbox`, `contextIsolation` and `webSecurity` are never disabled to obtain a uniform module format.
 - Pure logic (equalizer math, skin parsing, playlist operations, metadata normalization) lives in framework-free modules so it can be unit and property tested.
 - English identifiers, comments and docs.
 - Dependencies: add only when needed, prefer well-maintained and permissively licensed packages. Record any new runtime dependency and its license in the PR description.

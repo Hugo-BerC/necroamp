@@ -1,4 +1,5 @@
 # necroamp
+
 NecroAmp — The developer's music player. Resurrecting classic desktop music players for modern developers. Built with Kiro for Kiroween 2026.
 
 > Code. Listen. Repeat.
@@ -100,3 +101,21 @@ will be added during the development process.
 ## License
 
 MIT License.
+
+## Development
+
+Requires Node.js 24 LTS and pnpm 10. On Windows PowerShell use `pnpm.cmd` if script execution is restricted.
+
+| Command                             | Purpose                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm install --frozen-lockfile`    | Install pinned dependencies. Lifecycle scripts are deny-by-default.                  |
+| `pnpm dev`                          | Start electron-vite in development mode. Not available until the entry points exist. |
+| `pnpm build`                        | Build main, preload and renderer. Not available until the entry points exist.        |
+| `pnpm typecheck`                    | Run `tsc -b` over all projects.                                                      |
+| `pnpm lint`                         | Run ESLint.                                                                          |
+| `pnpm format` / `pnpm format:check` | Write or check Prettier formatting.                                                  |
+| `pnpm test`                         | Run Vitest once.                                                                     |
+| `pnpm test:coverage`                | Run Vitest with coverage thresholds.                                                 |
+| `pnpm test:e2e`                     | Run Playwright against the built app.                                                |
+
+Platform status: Windows x64 is the only validated platform. macOS and Linux are not verified.
