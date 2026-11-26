@@ -14,7 +14,7 @@ necroamp/
 │  ├─ steering/            # product.md, tech.md, structure.md, kiroween.md
 │  └─ specs/ hooks/ agents/ workflows/   # added later, on request
 ├─ .github/workflows/      # CI and release
-├─ docs/                   # architecture notes, ADRs, asset license register
+├─ docs/                   # adr/ architecture/ design/ engineering/ kiroween/ release/ security/ testing/; asset license register (assets.md) not yet created
 ├─ resources/              # build resources: icons, installer assets
 ├─ skins/                  # bundled skins, one directory per skin
 │  ├─ morgul-revenant/     # skin.json + assets + LICENSE-ASSETS.md

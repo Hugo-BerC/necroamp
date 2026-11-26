@@ -25,7 +25,7 @@ Judges look for deliberate, varied use of Kiro. Keep project-specific Kiro confi
 |---|---|
 | Steering | These four foundation files, plus focused files added later (for example Electron security, skin format, testing) |
 | Specs | One spec per major feature: player core, equalizer, visualizer, skin engine, GitHub auth, explorer, Actions monitor |
-| Agent sessions | Keep a log of notable sessions and decisions in `docs/kiro-journal.md` |
+| Agent sessions | Keep a log of notable sessions and decisions in `docs/kiroween/kiro-journal.md` |
 | Custom agents | Role-based agents such as security reviewer, audio DSP reviewer, skin artist |
 | Skills | Reusable procedures such as "add IPC channel" or "create skin" |
 | Hooks | Automations such as typecheck or asset license check on save |
@@ -39,12 +39,18 @@ These are plans, not current state. Do not create Specs, Custom Agents, Hooks or
 
 1. Treat `product.md`, `tech.md`, `structure.md` and this file as authoritative. If a request conflicts with them, say so and ask before proceeding.
 2. Prefer spec-driven development: requirements, design, tasks, then implementation.
-3. Do not commit, push, or publish unless explicitly asked.
+3. Do not publish unless explicitly authorized (rule 13). Commits and pushes follow rule 9.
 4. Do not introduce AWS or any hosted infrastructure.
 5. Do not add telemetry, analytics or network calls not required by a user-initiated GitHub feature.
 6. Record meaningful Kiro usage (what was done, which feature, what it changed) so it can feed the write-up and video.
 7. State assumptions explicitly and surface unresolved decisions (see `structure.md`, "Open decisions") instead of silently choosing.
 8. Never include secrets, tokens or personal data in the repository.
+9. Autonomous implementation, testing, dependency installation, commits, pushes and PR creation are authorized.
+10. Merging into `main` requires explicit human authorization naming the specific PR. Opening or updating a PR does not imply it.
+11. Agents never grant themselves human acceptance. A human gate (approval, confirmation, acceptance) is closed only by a human message, and docs must not claim one that was not given.
+12. A previous conditional authorization never overrides a later restriction. When instructions conflict, the later and stricter one applies.
+13. Publishing a release (tag, GitHub Release, package publication) requires explicit human authorization.
+See `docs/engineering/incident-pr5-merge-authorization.md`.
 
 ## Timeline note
 
