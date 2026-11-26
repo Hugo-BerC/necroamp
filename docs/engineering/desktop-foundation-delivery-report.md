@@ -92,3 +92,11 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 5. Optional: T5.5 seam review.
 6. Before the first public release: reassess F-3; run the packaging checks; verify macOS and Linux; add CI.
 7. Run the manual skill activation test (backlog A1).
+
+## 8. Integration status (final)
+
+- Commits: Block B `55c38d4`, `f5be83e`, `a695cc1`, `40bf76e`. Block C `d062b30` (security review), `ddea85a` (release docs), `af7fd19` (status reconciliation).
+- PR: https://github.com/Hugo-BerC/necroamp/pull/5 (draft, base `main` = `66f9f7f`, 10+ commits ahead, mergeable CLEAN).
+- CI: ABSENT. No `.github/workflows` exists, `gh pr checks` reports no checks, and the PR has no status check rollup. This is not a pass.
+- Merge: NOT MERGED. Blockers: T7.6 (human `pnpm dev` observation), T7.7 (depends on T7.6), T8.2 quality-review workflow, T8.4 architecture gate, T8.6 human approval. Section 5 ("T5...") of the human message was cut off and is pending.
+- Launch (production build): `pnpm.cmd build; pnpm.cmd exec electron-vite preview`. Development: `pnpm.cmd dev`.
