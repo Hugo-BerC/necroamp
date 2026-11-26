@@ -247,14 +247,14 @@ pnpm test
 
 **Tasks.**
 
-- [ ] **T4.1 Entry files.** `src/renderer/index.html` (`lang="en"`, `<title>NecroAmp</title>`, no meta CSP in source), `main.tsx` (no CSS import until T5.2 exists), `env.d.ts` (typed `window.necroamp`).
-- [ ] **T4.2 Bridge adapter and store.** `app/bridge/necroamp-client.ts` (`createNecroampClient`, the only reader of `window.necroamp`), `stores/app-info-store.ts` (`createAppInfoStore(client)`), `useAppInfo` hook, plus tests with a fake client.
-- [ ] **T4.3 Strings and layout.** `app/strings/en.ts` (typed constants, including the exact tagline `Code. Listen. Repeat.`), `app/shell-layout.ts` (`REGION_IDS`, `FOUNDATION_LAYOUT`).
-- [ ] **T4.4 Shared components.** `components/control-button`, `region-frame`, `status-text` (props only).
-- [ ] **T4.5 Regions.** For `player`, `playlist`, `equalizer`, `visualization`, `skin-selector`, `github`: `index.ts`, `<name>-region.tsx`, `<name>-view.tsx`, `use-<name>.ts`. Equalizer shows ten labelled band placeholders. Buttons are `aria-disabled` and focusable with visible "Not implemented in this phase" text. View files import their `*.module.css` only after T5.3 creates them.
-- [ ] **T4.6 Shell.** `app/app-shell.tsx`: header with the single `h1` and tagline, `main` with six labelled sections, `data-testid` equal to each region id, "unavailable" state when the bridge is missing (R8.10).
-- [ ] **T4.7 Component tests.** Co-located `*.test.tsx`: six regions, tagline, one `h1`, store states, placeholder activation updates `StatusText`.
-- [ ] **T4.8 Renderer validation.** `pnpm typecheck`, `pnpm lint` and `pnpm test` for the renderer project. The V5 build part is DEFERRED to T7.0 (needs main, preload and renderer entries plus the M5 CSS). Do not add stubs.
+- [x] **T4.1 Entry files.** `src/renderer/index.html` (`lang="en"`, `<title>NecroAmp</title>`, no meta CSP in source), `main.tsx` (no CSS import until T5.2 exists), `env.d.ts` (typed `window.necroamp`).
+- [x] **T4.2 Bridge adapter and store.** `app/bridge/necroamp-client.ts` (`createNecroampClient`, the only reader of `window.necroamp`), `stores/app-info-store.ts` (`createAppInfoStore(client)`), `useAppInfo` hook, plus tests with a fake client.
+- [x] **T4.3 Strings and layout.** `app/strings/en.ts` (typed constants, including the exact tagline `Code. Listen. Repeat.`), `app/shell-layout.ts` (`REGION_IDS`, `FOUNDATION_LAYOUT`).
+- [x] **T4.4 Shared components.** `components/control-button`, `region-frame`, `status-text` (props only).
+- [x] **T4.5 Regions.** For `player`, `playlist`, `equalizer`, `visualization`, `skin-selector`, `github`: `index.ts`, `<name>-region.tsx`, `<name>-view.tsx`, `use-<name>.ts`. Equalizer shows ten labelled band placeholders. Buttons are `aria-disabled` and focusable with visible "Not implemented in this phase" text. View files import their `*.module.css` only after T5.3 creates them.
+- [x] **T4.6 Shell.** `app/app-shell.tsx`: header with the single `h1` and tagline, `main` with six labelled sections, `data-testid` equal to each region id, "unavailable" state when the bridge is missing (R8.10).
+- [x] **T4.7 Component tests.** Co-located `*.test.tsx`: six regions, tagline, one `h1`, store states, placeholder activation updates `StatusText`.
+- [x] **T4.8 Renderer validation.** `pnpm typecheck`, `pnpm lint` and `pnpm test` for the renderer project. The V5 build part is DEFERRED to T7.0 (needs main, preload and renderer entries plus the M5 CSS). Do not add stubs.
 
 **Expected deliverables.** `src/renderer/**` as in design section 1, co-located tests.
 
@@ -289,10 +289,10 @@ pnpm test
 
 **Tasks.**
 
-- [ ] **T5.1 Tokens.** `app/styles/tokens.css`: color roles, spacing, type scale, radii, focus ring, font family tokens. Neutral dark gray and off-white palette. No Morgul Revenant palette value and no Analog 1984 look appears (design 8).
-- [ ] **T5.2 Global CSS and reset.** `app/styles/global.css`, imported once from `main.tsx`.
-- [ ] **T5.3 CSS Modules.** `*.module.css` per view using tokens only (no literal colors), `data-part` hooks, named grid areas from `FOUNDATION_LAYOUT`, `min-width: 0`, `overflow-wrap: anywhere`, layout valid at 800x600 and 1920x1080.
-- [ ] **T5.4 Contrast function and tests.** `app/theme/contrast.ts` (WCAG luminance, pure) with a test that reads token pairs from `tokens.css` and asserts text >= 4.5:1, large text and focus indicator >= 3:1.
+- [x] **T5.1 Tokens.** `app/styles/tokens.css`: color roles, spacing, type scale, radii, focus ring, font family tokens. Neutral dark gray and off-white palette. No Morgul Revenant palette value and no Analog 1984 look appears (design 8).
+- [x] **T5.2 Global CSS and reset.** `app/styles/global.css`, imported once from `main.tsx`.
+- [x] **T5.3 CSS Modules.** `*.module.css` per view using tokens only (no literal colors), `data-part` hooks, named grid areas from `FOUNDATION_LAYOUT`, `min-width: 0`, `overflow-wrap: anywhere`, layout valid at 800x600 and 1920x1080.
+- [x] **T5.4 Contrast function and tests.** `app/theme/contrast.ts` (WCAG luminance, pure) with a test that reads token pairs from `tokens.css` and asserts text >= 4.5:1, large text and focus indicator >= 3:1.
 - [ ] **T5.5 Seam review (optional).** art-director reads the shell and CSS and writes `docs/design/desktop-foundation-skin-seams.md` mapping each Morgul Revenant and Analog 1984 need (materials, custom controls, typography, geometry, chrome, effects) to the seams in design 8, and lists gaps. No art, fonts or assets are created, so no `docs/assets.md` entry is needed.
 
 **Expected deliverables.** `app/styles/*.css`, per-view CSS Modules, `app/theme/contrast.ts` and test, optional design note.

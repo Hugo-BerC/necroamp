@@ -213,3 +213,18 @@ Added 5 config files and 4 docs. Agents, skills and steering are unchanged (empt
 
 ### Limitations
 Recipe and hook syntax is VERIFIED only as valid JSON and against IDE-bundle evidence. IDE acceptance of the recipes was not tested in this step. `post-task-quality` fails silently without `package.json`. See `docs/engineering/automation-validation.md`.
+
+## 13. Phase 05: renderer and styling, Block A (M4, M5; branch `feature/desktop-foundation`)
+
+### What was done
+Implemented the renderer shell, stores, bridge adapter, six placeholder regions (M4) and the token-based, accessible CSS Modules styling with a pure WCAG contrast function (M5). First integration launch: `electron-vite preview` on the fresh build opened a `NecroAmp` BrowserWindow.
+
+### Agents and skills actually invoked
+- `git-reconcile` wf-coder: reconciled repository state before Block A.
+- `necro-architect`: renderer architecture and contract notes (`docs/architecture/renderer-architecture.md`, `contract-changes.md`).
+- `frontend-engineer`: renderer implementation (`src/renderer/`).
+- `art-director`: styling and skin-seam notes (`docs/design/foundation-styling.md`).
+- `wf-code-reviewer`: reviewed Block A; findings were resolved.
+
+### Result
+Fresh validation: typecheck, lint, format:check and build exit 0. Vitest 625 passed, 2 skipped (symlink privilege, same two as before), 42 files. T4.1 to T4.8 and T5.1 to T5.4 ticked; T5.5 stays open (no `desktop-foundation-skin-seams.md`).

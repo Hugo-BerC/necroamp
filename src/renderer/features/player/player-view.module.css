@@ -1,0 +1,48 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--na-space-3) var(--na-space-5);
+  min-width: 0;
+}
+
+.root [data-part='now-playing'] {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: var(--na-space-3);
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface-inset);
+}
+
+.root [data-part='now-playing'] dl {
+  display: grid;
+  gap: var(--na-space-1);
+}
+
+.root [data-part='now-playing'] dl > div {
+  display: flex;
+  gap: var(--na-space-3);
+  min-width: 0;
+}
+
+.root [data-part='now-playing'] dt {
+  color: var(--na-color-text-muted);
+}
+
+.root [data-part='now-playing-position'] dd {
+  color: var(--na-color-accent);
+  font-family: var(--na-font-family-mono);
+  font-size: var(--na-font-size-4);
+}
+
+.root [data-part='transport'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--na-space-3);
+}
+
+.root [data-part='unavailable-note'] {
+  flex: 1 1 100%;
+  color: var(--na-color-text-muted);
+}

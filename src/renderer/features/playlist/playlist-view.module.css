@@ -1,0 +1,24 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--na-space-3);
+  min-width: 0;
+}
+
+.root [data-part='playlist-empty'] {
+  padding: var(--na-space-3);
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface-inset);
+  color: var(--na-color-text-muted);
+}
+
+.root [data-part='playlist-actions'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--na-space-3);
+}
+
+.root [data-part='unavailable-note'] {
+  color: var(--na-color-text-muted);
+}

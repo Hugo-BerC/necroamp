@@ -1,0 +1,110 @@
+.shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+  padding: var(--na-space-3);
+  gap: var(--na-space-3);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--na-space-3) var(--na-space-5);
+  min-width: 0;
+  padding: var(--na-space-2) var(--na-space-3);
+  border: var(--na-border-width) solid var(--na-color-border-subtle);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface);
+}
+
+.header h1 {
+  font-size: var(--na-font-size-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header [data-part='tagline'] {
+  color: var(--na-color-text-muted);
+}
+
+.header [data-part='app-info'],
+.header [data-part='status-indicators'] {
+  min-width: 0;
+}
+
+.header [data-part='app-info'] {
+  margin-inline-start: auto;
+}
+
+.header dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--na-space-2) var(--na-space-5);
+}
+
+.header dl > div {
+  display: flex;
+  gap: var(--na-space-2);
+  min-width: 0;
+}
+
+.header dt {
+  color: var(--na-color-text-muted);
+}
+
+.header dd {
+  overflow-wrap: anywhere;
+}
+
+.regions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'player        player        player'
+    'playlist      visualization equalizer'
+    'playlist      visualization equalizer'
+    'skin-selector skin-selector github';
+  gap: var(--na-space-3);
+  min-width: 0;
+  min-height: 0;
+}
+
+.regions > [data-region='player'] {
+  grid-area: player;
+}
+
+.regions > [data-region='playlist'] {
+  grid-area: playlist;
+}
+
+.regions > [data-region='visualization'] {
+  grid-area: visualization;
+}
+
+.regions > [data-region='equalizer'] {
+  grid-area: equalizer;
+}
+
+.regions > [data-region='skin-selector'] {
+  grid-area: skin-selector;
+}
+
+.regions > [data-region='github'] {
+  grid-area: github;
+}
+
+@media (max-width: 899px) {
+  .regions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto repeat(3, minmax(0, 1fr)) auto;
+    grid-template-areas:
+      'player        player'
+      'playlist      visualization'
+      'playlist      visualization'
+      'equalizer     equalizer'
+      'skin-selector github';
+  }
+}
