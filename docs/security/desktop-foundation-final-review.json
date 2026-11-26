@@ -1,0 +1,38 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": "FR-1",
+      "severity": "Low",
+      "location": "src/main/protocol/app-protocol.ts:98-103",
+      "evidence": "realpath, stat and readFile are separate calls (carry-over F-3 TOCTOU). Backlog F-3 stays open.",
+      "fix": "Mandatory reassessment before first public release: accept permanently, read through an opened handle, or evaluate protocol.registerSource. Record in an ADR.",
+      "owner": "desktop-engineer"
+    },
+    {
+      "id": "FR-2",
+      "severity": "Low",
+      "location": "src/main/lifecycle/user-data-override.ts; src/main/index.ts:39-44",
+      "evidence": "NECROAMP_E2E_USER_DATA redirects userData in unpackaged runs only. Packaged builds ignore it.",
+      "fix": "Optional: restrict to the OS temp directory. Confirm in a packaged-build test (F-7).",
+      "owner": "desktop-engineer"
+    },
+    {
+      "id": "FR-3",
+      "severity": "Informational",
+      "location": "src/main/security/csp.ts (development policy)",
+      "evidence": "Dev CSP allows unsafe-inline. Not reachable in production. Pending T7.6 / F-4.",
+      "fix": "Remove allowances the pnpm dev run shows are unneeded.",
+      "owner": "desktop-engineer"
+    },
+    {
+      "id": "FR-4",
+      "severity": "Informational",
+      "location": "src/main/index.ts",
+      "evidence": "No will-download handler or non-app scheme webRequest block. Existing guards and CSP already deny these paths. Fuses and ASAR integrity not reviewed (packaging deferred, F-7).",
+      "fix": "Add deny-all download handler when file features arrive. Review Fuses at packaging.",
+      "owner": "desktop-engineer"
+    }
+  ],
+  "reviewDoc": "C:/Users/hberm/Desktop/necroamp/docs/security/desktop-foundation-final-review.md"
+}
