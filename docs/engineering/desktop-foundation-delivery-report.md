@@ -112,3 +112,7 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 
 - The human accepted the automated dev runtime, HMR and CSP evidence in place of a human-run `pnpm dev`. T7.6 COMPLETE, T7.7 COMPLETE (Windows x64 only). Dev `unsafe-inline` retained, production CSP unchanged, no `unsafe-eval`. macOS and Linux NOT VERIFIED, GitHub CI ABSENT.
 - Remaining: T8.5 (hooks confirmation) and T8.6 (merge approval). Not merged. This update supersedes the earlier T7.6 and T7.7 PENDING statements above.
+
+## Final acceptance
+
+Desktop Foundation is COMPLETE (Windows x64 runtime verified only). T8.5 and T8.6 are closed on human approval. The human confirmed hooks `post-task-quality` and `ipc-security-check` remain disabled and accepted the limitations: macOS and Linux NOT VERIFIED, GitHub CI ABSENT, F-3 reassessment before the first public release, F-7 packaging checks deferred, T5.5 deferred to the Skin Engine phase. This section supersedes the earlier "not merged" and pending statements.

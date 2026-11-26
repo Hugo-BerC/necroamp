@@ -253,3 +253,5 @@ T7.5 build-validation document written. Bounded `pnpm dev` run: startup and clea
 T8.1 (base 66f9f7f, HEAD 10dfc3f), T8.2 (quality-review run desktop-foundation-final, APPROVE WITH FIXES, 0 blockers), T8.3 (APPROVED) and T8.4 (architecture gate APPROVED) are COMPLETE. T7.6 stays PENDING (HMR untested, human launch unconfirmed), so T7.7 stays PENDING. T8.5 awaits hook confirmation, T8.6 awaits human approval plus V-1 and V-2. T5.5 DEFERRED (optional). F-3 and packaging checks DEFERRED, CI ABSENT, macOS and Linux NOT VERIFIED. Changes are uncommitted until the integration commit.
 
 T7.6 HMR probe (reversible, via CDP) passed for TS and CSS edits; files restored, no residue; dev unsafe-inline for script and style required; production CSP unchanged; rebuild exit 0. Report: docs/release/desktop-foundation-dev-runtime-validation.md. T7.6 and T7.7 stay PENDING for the human-run dev launch confirmation. V-1 recorded as human-approved; V-2 owner is the top-level orchestrator. T8.5 and T8.6 pending.
+
+Final acceptance: human approved Desktop Foundation (T8.5, T8.6 closed) with documented limitations; hooks confirmed disabled. PR #5 marked ready and squash merged.
