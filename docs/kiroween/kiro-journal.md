@@ -240,7 +240,7 @@ Fresh: typecheck, lint, format:check, build exit 0; vitest 52 files, 768 passed,
 
 ## 15. Phase 07: final delivery preparation, Block C (M8 preparation; branch `feature/desktop-foundation`)
 ### What was done
-Acceptance reconciliation of M0 to M8 against tasks.md, fresh full validation, README, ADR 0003 and 0005 runtime notes, backlog update and the single delivery report (`docs/engineering/desktop-foundation-delivery-report.md`). No `desktop-foundation-final-review.json` existed, so no repair work was done.
+Acceptance reconciliation of M0 to M8 against tasks.md, fresh full validation, README, ADR 0003 and 0005 runtime notes, backlog update and the single delivery report (`docs/engineering/desktop-foundation-delivery-report.md`). No final review JSON existed at that time, so no repair work was done. The final security report was later renamed to `docs/security/desktop-foundation-final.md` (T8.3); the JSON kept its name.
 ### Agents and skills actually invoked
 None. The orchestrator did this work directly. The `quality-review` workflow was not run.
 ### Result
@@ -248,3 +248,6 @@ Fresh on Windows x64: typecheck, lint, format:check, test, test:coverage, build,
 
 ### Block C closing step
 T7.5 build-validation document written. Bounded `pnpm dev` run: startup and clean shutdown confirmed, T7.6 remains pending (needs human console/HMR observation). base_ref origin/main = 66f9f7f. Fresh run after the dev run: build exit 0, test:e2e 35 passed. Final commit hashes, PR and merge status are in the delivery report section 8.
+
+### Block D milestone reconciliation
+T8.1 (base 66f9f7f, HEAD 10dfc3f), T8.2 (quality-review run desktop-foundation-final, APPROVE WITH FIXES, 0 blockers), T8.3 (APPROVED) and T8.4 (architecture gate APPROVED) are COMPLETE. T7.6 stays PENDING (HMR untested, human launch unconfirmed), so T7.7 stays PENDING. T8.5 awaits hook confirmation, T8.6 awaits human approval plus V-1 and V-2. T5.5 DEFERRED (optional). F-3 and packaging checks DEFERRED, CI ABSENT, macOS and Linux NOT VERIFIED. Changes are uncommitted until the integration commit.

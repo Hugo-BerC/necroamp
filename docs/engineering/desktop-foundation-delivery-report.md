@@ -15,8 +15,8 @@ Labels: IMPLEMENTED, TESTED, RUNTIME VERIFIED, INTEGRATION PENDING, DEFERRED, BL
 | M4 Renderer shell | COMPLETE | Six regions plus header. T4.1 to T4.8 ticked. |
 | M5 Styling foundation | IMPLEMENTED, TESTED. T5.5 DEFERRED | Tokens, CSS Modules, WCAG contrast function. T5.5 (seam review, optional) is not written: `desktop-foundation-skin-seams.md` does not exist. |
 | M6 Tests | COMPLETE | Property, static, integration, jsdom a11y tests, coverage gate, traceability file. |
-| M7 Smoke and production build | INTEGRATION PENDING | T7.0 to T7.4 done. T7.5 COMPLETE (`docs/release/desktop-foundation-build-validation.md`). T7.6 PENDING: bounded `pnpm dev` startup and shutdown verified, console, HMR and CSP-need evidence need a human (see tasks.md). T7.7 matrix ran fresh on Windows (section 3). macOS and Linux NOT VERIFIED. |
-| M8 Final review and integration | INTEGRATION PENDING | T8.1 to T8.4 and T8.6 not done: no final review workflow run, no `docs/security/desktop-foundation-final.md`, no architecture gate document, no human approval. T8.5 is done by this step (README, ADR notes, backlog, journal, this report). `docs/security/desktop-foundation-final-review.json` does not exist, so there are no final review findings to repair. |
+| M7 Smoke and production build | INTEGRATION PENDING | T7.0 to T7.4 done. T7.5 COMPLETE (`docs/release/desktop-foundation-build-validation.md`). T7.6 PENDING: bounded `pnpm dev` startup and shutdown verified, console, HMR and CSP-need evidence need a human (see tasks.md). T7.7 matrix ran fresh on Windows (section 3) and stays PENDING on T7.6 (HMR not tested, human launch not confirmed). Automated dev run: no page errors, dev `unsafe-inline` required for script and style, production CSP unchanged. macOS and Linux NOT VERIFIED. |
+| M8 Final review and integration | INTEGRATION PENDING | T8.1 COMPLETE (base 66f9f7f, HEAD 10dfc3f). T8.2 COMPLETE (quality-review APPROVE WITH FIXES, 0 blockers; V-1 and V-2 need human decisions before merge). T8.4 COMPLETE (architecture gate APPROVED). T8.6 PENDING (human approval); T8.5 PENDING hook confirmation. T8.5 is done by this step (README, ADR notes, backlog, journal, this report). The final security review exists at `docs/security/desktop-foundation-final.md` (with `desktop-foundation-final-review.json`), verdict APPROVED; T8.3 is done. |
 
 Placeholder regions only: the feature areas are not implemented in this phase. Player, playlist, equalizer, visualizer, skins and GitHub show "Not implemented in this phase". No audio engine, no playlist logic, no skin loading, no GitHub calls.
 
@@ -73,7 +73,7 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 
 ## 5. Kiro evidence
 
-- Workflows: `git-reconcile` (Block A). The `quality-review` workflow (T8.2) has NOT been run.
+- Workflows: `git-reconcile` (Block A). The `quality-review` workflow (T8.2) ran later (run `desktop-foundation-final`, APPROVE WITH FIXES, base 66f9f7f, HEAD 10dfc3f).
 - Agents actually invoked (from the journal): `necro-architect`, `frontend-engineer`, `art-director`, `wf-code-reviewer` (Block A); `qa-engineer`, `desktop-engineer`, `frontend-engineer`, and a Block B reviewer (Block B). Earlier phases used release-engineer, security-reviewer and others; see `docs/kiroween/kiro-journal.md`. No agent was invoked in Block C. The Block B agent names were copied from the Block A list by the prior step and are only partly confirmed.
 - Skills actually loaded: `testing-strategy` (qa-engineer, Block B) is the only one the journal confirms. Per-agent skill mapping has not been runtime-tested (backlog A1).
 - Decisions: ADR 0001 to 0005; Electron 45.5.0 pin; ESM exception E-ESM-1 (CommonJS main and preload); F-3 accepted temporarily; defects 0001 to 0004 fixed.
@@ -87,7 +87,7 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 
 1. Human: run `pnpm dev` once (T7.6) and record whether `unsafe-inline` is needed (F-4).
 2. Write `docs/release/desktop-foundation-build-validation.md` (T7.5, release-engineer), using section 3 as input.
-3. Run `quality-review` (T8.1, T8.2), then `docs/security/desktop-foundation-final.md` (T8.3) and the architecture gate (T8.4). T8.1 needs a base ref from the human.
+3. Run `quality-review` (T8.1, T8.2), then the architecture gate (T8.4); T8.3 is done (`docs/security/desktop-foundation-final.md`). T8.1 needs a base ref from the human.
 4. Human final approval (T8.6). Confirm hooks `post-task-quality` and `ipc-security-check` stay disabled.
 5. Optional: T5.5 seam review.
 6. Before the first public release: reassess F-3; run the packaging checks; verify macOS and Linux; add CI.
@@ -98,5 +98,5 @@ pnpm.cmd build; pnpm.cmd exec electron-vite preview
 - Commits: Block B `55c38d4`, `f5be83e`, `a695cc1`, `40bf76e`. Block C `d062b30` (security review), `ddea85a` (release docs), `af7fd19` (status reconciliation).
 - PR: https://github.com/Hugo-BerC/necroamp/pull/5 (draft, base `main` = `66f9f7f`, 10+ commits ahead, mergeable CLEAN).
 - CI: ABSENT. No `.github/workflows` exists, `gh pr checks` reports no checks, and the PR has no status check rollup. This is not a pass.
-- Merge: NOT MERGED. Blockers: T7.6 (human `pnpm dev` observation), T7.7 (depends on T7.6), T8.2 quality-review workflow, T8.4 architecture gate, T8.6 human approval. Section 5 ("T5...") of the human message was cut off and is pending.
+- Merge: NOT MERGED. Blockers: T7.6 (HMR probe and human `pnpm dev` confirmation), T7.7 (depends on T7.6), T8.5 hook confirmation, T8.6 human approval, V-1 and V-2 decisions. T8.1 to T8.4 are COMPLETE. GitHub CI ABSENT, macOS and Linux NOT VERIFIED, F-3 and packaging checks DEFERRED. Section 5 ("T5...") of the human message was cut off and is pending.
 - Launch (production build): `pnpm.cmd build; pnpm.cmd exec electron-vite preview`. Development: `pnpm.cmd dev`.
