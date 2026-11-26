@@ -23,7 +23,7 @@
       "@renderer/*": ["./src/renderer/*"]
     }
   },
-  "include": ["src/renderer/**/*"],
+  "include": ["src/renderer/**/*", "src/preload/necroamp-window.d.ts"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.shared.json" }]
 }
