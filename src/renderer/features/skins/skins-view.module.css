@@ -9,3 +9,13 @@
 .root [data-part='unavailable-note'] {
   color: var(--na-color-text-muted);
 }
+
+.root [data-part='skin-select'] {
+  margin: 0;
+  padding: var(--na-space-2) var(--na-space-3);
+  list-style: none;
+  color: var(--na-color-text-muted);
+  background: var(--na-color-surface-inset);
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-1);
+}

@@ -9,3 +9,8 @@
 .root [data-part='unavailable-note'] {
   color: var(--na-color-text-muted);
 }
+
+.root [data-part='github-status'] {
+  color: var(--na-color-text);
+  font-weight: 600;
+}

@@ -65,6 +65,7 @@ export const STRINGS = {
     empty: 'The playlist is empty. Playlists are not implemented in this phase.',
     addFiles: 'Add files',
     savePlaylist: 'Save playlist',
+    listLabel: 'Playlist items',
   },
   equalizer: {
     bands: 'Equalizer bands',
@@ -91,9 +92,12 @@ export const STRINGS = {
   skins: {
     none: 'No skins are available. Skin selection is not implemented in this phase.',
     choose: 'Choose skin',
+    selectLabel: 'Skin',
+    foundationDefault: 'Foundation default',
   },
   github: {
     optional: 'GitHub features are optional. NecroAmp works fully without signing in.',
     signIn: 'Sign in with GitHub',
+    status: 'Not signed in',
   },
 } as const;

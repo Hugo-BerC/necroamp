@@ -12,6 +12,7 @@ export function GithubView({ signInLabel, onSignIn, message }: GithubPlaceholder
     <RegionFrame id="github" titleId="github-heading" heading={STRINGS.regions.github}>
       <div className={styles.root}>
         <p data-part="github-optional">{STRINGS.github.optional}</p>
+        <p data-part="github-status">{STRINGS.github.status}</p>
         <ControlButton
           label={signInLabel}
           part="github-sign-in"

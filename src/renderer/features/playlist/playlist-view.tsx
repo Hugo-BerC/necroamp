@@ -17,6 +17,7 @@ export function PlaylistView({ actions, message }: PlaylistViewProps) {
     <RegionFrame id="playlist" titleId="playlist-heading" heading={STRINGS.regions.playlist}>
       <div className={styles.root}>
         <p data-part="playlist-empty">{STRINGS.playlist.empty}</p>
+        <ul data-part="playlist-items" aria-label={STRINGS.playlist.listLabel} />
         <div data-part="playlist-actions" role="group" aria-label={STRINGS.regions.playlist}>
           {actions.map((action) => (
             <ControlButton

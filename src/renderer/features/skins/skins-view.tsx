@@ -16,6 +16,9 @@ export function SkinsView({ chooseLabel, onChoose, message }: SkinSelection) {
     >
       <div className={styles.root}>
         <p data-part="skin-none">{STRINGS.skins.none}</p>
+        <ul data-part="skin-select" aria-label={STRINGS.skins.selectLabel}>
+          <li>{STRINGS.skins.foundationDefault}</li>
+        </ul>
         <ControlButton
           label={chooseLabel}
           part="skin-choose"
