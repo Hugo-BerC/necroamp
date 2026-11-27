@@ -6,6 +6,7 @@ import {
   makeTaggedMp3,
   makeToneMp3,
 } from '../fixtures/audio/generate-tagged';
+import { makeOggVorbis } from '../fixtures/audio/generate-vorbis';
 import { expect, test } from './fixtures/launch';
 
 // Audio Engine Block B: decode every synthetic fixture with the real Chromium decoders of the
@@ -99,6 +100,15 @@ const CASES = [
     minRms: 0.2,
     maxRms: 0.4,
   },
+  // Real Ogg Vorbis (libvorbis via wasm-media-encoders). Lossy and encoder-padded, so a wider band.
+  {
+    name: 'OGG (Vorbis)',
+    build: () => makeOggVorbis(),
+    seconds: 1,
+    tolerance: 0.06,
+    minRms: 0.2,
+    maxRms: 0.36,
+  },
   {
     name: 'OGG (Ogg FLAC, tagged with artwork)',
     build: () =>
@@ -143,7 +153,7 @@ test.describe('decoded fixtures (automated, not human listening)', () => {
     test(`${item.name} decodes to a 440 Hz tone of the expected length and level`, async ({
       page,
     }) => {
-      const result = await analyse(page, item.build());
+      const result = await analyse(page, await item.build());
       expect(result.nonFinite).toBe(0);
       expect(result.channels).toBeGreaterThanOrEqual(1);
       expect(Math.abs(result.durationSec - item.seconds)).toBeLessThanOrEqual(item.tolerance);
@@ -153,6 +163,15 @@ test.describe('decoded fixtures (automated, not human listening)', () => {
       expectTone(result);
     });
   }
+
+  test('the Vorbis fixture is a real Ogg Vorbis stream, not Ogg FLAC', async () => {
+    const text = Buffer.from(await makeOggVorbis()).toString('latin1');
+    expect(text.startsWith('OggS')).toBe(true);
+    expect(text).toContain('\u0001vorbis'); // identification header
+    expect(text).toContain('\u0003vorbis'); // comment header
+    expect(text).toContain('\u0005vorbis'); // setup header
+    expect(text).not.toContain('\u007fFLAC');
+  });
 
   test('the silent MP3 decodes to silence, so a tone assertion can tell the two fixtures apart', async ({
     page,

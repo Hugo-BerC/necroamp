@@ -92,10 +92,10 @@ Playwright drives the production build in Electron with synthetic, script-genera
 - **AE-04 (Info).** `media://` applies to the whole default session, and tokens live until the window closes. The Skin Engine must not load untrusted web content in this session.
 - **AE-05 (Info).** Licenses are checked (all MIT, see above). Advisories are not: `pnpm audit` was not run.
 - **EQ settings are not persisted (spec C4).** No `settings:*` IPC channel exists, so the equalizer resets to Flat on restart.
-- **Ogg Vorbis is not covered by automation.** The OGG fixtures are Ogg FLAC.
+- **Ogg Vorbis is verified on Windows only.** A real Ogg Vorbis fixture (libvorbis via the dev-only `wasm-media-encoders` 0.7.0, MIT) decodes in Chromium as a 440 Hz tone and plays with advancing `currentTime`. Ogg Opus is not covered, and macOS and Linux decoders are untested.
 - **Defect D-B1 (0005).** C1 control characters remain in tag text. They are still rendered as text, never as HTML.
 - **Platforms.** Only Windows x64 was tested. macOS and Linux decoders and runtime are not verified, and there is no CI.
-- **Graph tests.** Graph unit tests use a fake `AudioContext`. EQ band and bypass effects on real audio are covered only indirectly, through the analyser check above.
+- **Graph tests.** Graph unit tests use a fake `AudioContext`. EQ preamp, band and bypass effects on real audio are covered by `tests/e2e/equalizer-audio.spec.ts`, which reads the spectrum canvas (drawn from the real `AnalyserNode`) while a 440 Hz tone plays.
 - **`docs/assets.md`** does not exist yet. The fixture license note is in `tests/fixtures/audio/README.md`.
 
 ## Manual music-playback test

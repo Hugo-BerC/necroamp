@@ -24,7 +24,7 @@ Also generated from code at test time; the artwork is an 8x8 gradient PNG writte
 | Fixture       | Generated as                                                                                  | Decoded in Chromium (`audio-decode.spec.ts`) | Used for                      |
 | ------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------- |
 | `tone.mp3`    | 39 hand-assembled MPEG-1 Layer III frames, one spectral line at about 440 Hz, rms about 0.124 | yes, non-silent                              | MP3 playback and decode level |
-| `tone.ogg`    | Ogg-encapsulated FLAC (OggFLAC mapping), 6 frames, empty Vorbis comment                       | yes                                          | `.ogg` playback               |
+| `tone.ogg`    | Ogg-encapsulated FLAC (not Vorbis; OggFLAC mapping), 6 frames, empty Vorbis comment           | yes                                          | `.ogg` playback               |
 | `tagged.mp3`  | `tone.mp3` behind an ID3v2.4 tag (UTF-8 title, artist, album, PNG APIC)                       | yes                                          | metadata and artwork          |
 | `tagged.flac` | FLAC with VORBIS_COMMENT and PICTURE blocks                                                   | yes                                          | metadata and artwork          |
 | `tagged.ogg`  | Ogg FLAC with Vorbis comment and a PICTURE packet                                             | yes                                          | metadata and artwork          |
@@ -37,8 +37,22 @@ Method notes:
 - The MP3 level was measured, not assumed: `globalGain` 200 gives a clean sine (peak/rms about 1.43), 210 clips. Decoders differ a little, so the test band is rms 0.08 to 0.25.
 - Chromium's demuxer rejected an Ogg FLAC stream whose only header was STREAMINFO. The generator always writes a VORBIS_COMMENT block, as the reference FLAC encoder does.
 
+## Ogg Vorbis fixture (generate-vorbis.ts)
+
+| Fixture                       | Generated as                                                                                                               | Decoded in Chromium                                                                                                                                                                       | Used for          |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `orbis.ogg` (`makeOggVorbis`) | real Ogg Vorbis (libvorbis), mono, 44.1 kHz, 440 Hz sine at amplitude 0.4, about 1.0 s, VBR quality 6, fixed serial number | yes: tone dominates off-tone probes by 20x, rms 0.2 to 0.36, length 1.0 s +/- 0.06 s (`audio-decode.spec.ts`); plays with advancing `currentTime` and a lit spectrum (`playback.spec.ts`) | Vorbis codec path |
+
+The stream is encoded at test time by `wasm-media-encoders` 0.7.0 (devDependency, exact version pinned). Nothing binary is committed and no third-party audio is involved: the only input is a sine computed in the generator.
+
+| Component                   | Licence                 | Notes                                                                                                                                                                                                                                                                          |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `wasm-media-encoders` 0.7.0 | MIT (package `LICENSE`) | Compiles the reference Ogg Vorbis encoder (BSD-3-Clause libvorbis and libogg) and LAME (LGPL, MP3 encoder, unused here) to WebAssembly. Package licence is MIT. devDependency used only by test fixture generation: not imported by `src/`, not bundled or shipped in the app. |
+
+`audio-decode.spec.ts` also asserts the identification, comment and setup headers (`\x01vorbis`, `\x03vorbis`, `\x05vorbis`) and the absence of an Ogg FLAC marker, so the fixture cannot silently turn back into Ogg FLAC.
+
 ## Known gaps
 
-- There is no Ogg Vorbis or Ogg Opus fixture. No encoder is available offline and a hand-written Vorbis encoder is out of proportion for a fixture. `.ogg` is verified through Ogg FLAC, which exercises the extension allow list, the media protocol, the Ogg demuxer, tag and artwork parsing and the FLAC decoder, but NOT the Vorbis codec. Real-world `.ogg` files are almost always Vorbis, so Vorbis playback remains unverified by automation. A human with a Vorbis file (or a licence-clean encoded sample added to `tests/fixtures`, with an `docs/assets.md` entry from art-director) closes this gap.
+- Ogg Opus is not covered (the app allow list is `.ogg` and the fixture is Vorbis). Ogg Vorbis is verified on Windows only.
 - Only Windows has been exercised. macOS and Linux decoders are untested here.
 - Decoding is verified, audibility is not: no human listening has taken place.

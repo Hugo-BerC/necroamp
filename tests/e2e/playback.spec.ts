@@ -10,6 +10,7 @@ import {
   makeWav,
 } from '../fixtures/audio/generate-audio';
 import { makeOggFlac, makeToneMp3 } from '../fixtures/audio/generate-tagged';
+import { makeOggVorbis } from '../fixtures/audio/generate-vorbis';
 import { expect, test } from './fixtures/launch';
 
 // Audio Engine Block A: automated playback verification against the production build.
@@ -36,7 +37,7 @@ const AUDIO = 'audio[data-part="audio-source"]';
 let dir: string;
 const files = new Map<string, string>();
 
-test.beforeAll(() => {
+test.beforeAll(async () => {
   dir = mkdtempSync(path.join(tmpdir(), 'necroamp-e2e-audio-'));
   const write = (name: string, bytes: Uint8Array): void => {
     const full = path.join(dir, name);
@@ -49,6 +50,7 @@ test.beforeAll(() => {
   write('tone.flac', makeFlac());
   write('tone.mp3', makeToneMp3());
   write('tone.ogg', makeOggFlac());
+  write('vorbis.ogg', await makeOggVorbis());
   write('container-only.ogg', makeOggContainerOnly());
   write('garbage.mp3', makeGarbage());
 });
@@ -210,6 +212,20 @@ test.describe('local playback (automated, not human listening)', () => {
       .poll(async () => (await source(page)).currentTime, { timeout: 15_000 })
       .toBeGreaterThan(0.1);
   });
+  test('plays a real Ogg Vorbis file, reports its duration and advances', async ({ app, page }) => {
+    await stubDialog(app, files.get('vorbis.ogg') as string);
+    await button(page, 'Open').click();
+    await expect
+      .poll(async () => (await source(page)).duration, { timeout: 15_000 })
+      .toBeCloseTo(1, 1);
+    expect((await source(page)).errorCode).toBeNull();
+    await expect
+      .poll(async () => (await source(page)).currentTime, { timeout: 15_000 })
+      .toBeGreaterThan(0.1);
+    // The spectrum is drawn from the analyser, so a lit canvas shows the decoded tone reaches the graph.
+    await expect.poll(() => litSpectrumPixels(page), { timeout: 10_000 }).toBeGreaterThan(0);
+  });
+
   test('plays a FLAC without a media error and reports its duration', async ({ app, page }) => {
     await stubDialog(app, files.get('tone.flac') as string);
     await button(page, 'Open').click();
