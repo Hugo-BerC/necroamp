@@ -290,3 +290,9 @@ The merge was not reverted. The human asked for a limited reconciliation and a P
 ### Result
 
 Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check, build exit 0. Vitest 108 files, 1417 passed, 1 expected fail (defect D-B1), 4 skipped (symlink privilege). Coverage statements 99.3, branches 96.13, functions 99.16, lines 99.5, thresholds unchanged. test:e2e 76 passed. All playback checks are automated; no human listening was done. Human gates H.1 to H.4 stay open.
+
+### 17.1 Audio Engine final delivery
+- Gate fixes: D-A4 (audio-engineer), D-A6 CSP oracle (qa-engineer), D-B1 tag control-character sanitization (desktop-engineer), AE-07 stray control characters in a source comment (orchestrator).
+- Added a real Ogg Vorbis fixture and a real-AudioContext equalizer e2e (qa-engineer). The generator dependency wasm-media-encoders 0.7.0 is dev-only and not shipped (docs/engineering/audio-engine-dependency-review.md).
+- Final security review: APPROVED_WITH_LIMITATIONS, no Medium or higher (docs/security/audio-engine-review.md). ADR 0006 reconciled with the implemented CSP and protocol; Spec as-built record in .kiro/specs/audio-engine/as-built.md.
+- Orchestration note: step agents cannot commit, push or write .agents/ or *.property.test.ts, so the orchestrator performed those. Human gates H.1 to H.4 remain open; no human listening has occurred.

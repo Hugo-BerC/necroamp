@@ -42,11 +42,8 @@ describe('cleanText', () => {
     );
   });
 
-  // Defect D-B1 (docs/testing/defects/0005-clean-text-keeps-c1-and-format-characters.md): cleanText's
-  // contract is "strips control characters" but it only removes C0 and DEL. C1 controls (U+0080 to
-  // U+009F, for example NEL U+0085) pass through. `it.fails` turns green when desktop-engineer fixes it,
-  // and the run then fails until this marker is removed, so the fix cannot go unnoticed.
-  it.fails('D-B1: strips C1 control characters as well', () => {
+  // Regression for defect D-B1 (docs/testing/defects/0005-clean-text-keeps-c1-and-format-characters.md): cleanText strips C1 controls.
+  it('D-B1: strips C1 control characters as well', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 0x80, max: 0x9f }),

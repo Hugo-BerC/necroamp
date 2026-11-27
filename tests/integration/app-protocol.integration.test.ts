@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildCsp } from '@main/security/csp';
+import { SYMLINKS_PERMITTED, SYMLINK_SKIP_REASON } from './support/fs-capabilities';
 import {
   MAX_ASSET_BYTES,
   createAppProtocolHandler,
@@ -14,7 +15,6 @@ import {
 const log = { info: () => undefined, warn: () => undefined, error: () => undefined };
 let base: string;
 let root: string;
-let symlinkWorks = true;
 
 beforeAll(() => {
   base = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'necroamp-proto-')));
@@ -25,11 +25,11 @@ beforeAll(() => {
   writeFileSync(path.join(root, 'assets', 'logo.png'), 'x');
   writeFileSync(path.join(base, 'secret.json'), '{"secret":true}');
   writeFileSync(path.join(root, 'big.js'), Buffer.alloc(MAX_ASSET_BYTES + 1));
-  try {
-    symlinkSync(path.join(base, 'secret.json'), path.join(root, 'link.json'));
-  } catch {
-    symlinkWorks = false;
-  }
+  if (SYMLINKS_PERMITTED) symlinkSync(path.join(base, 'secret.json'), path.join(root, 'link.json'));
+  // Directory junctions need no privilege on Windows and behave like a directory symlink.
+  mkdirSync(path.join(base, 'outside-dir'));
+  writeFileSync(path.join(base, 'outside-dir', 'leak.json'), '{}');
+  symlinkSync(path.join(base, 'outside-dir'), path.join(root, 'junction'), 'junction');
 });
 afterAll(() => rmSync(base, { recursive: true, force: true }));
 
@@ -95,9 +95,16 @@ describe('app:// protocol against a real directory', () => {
     expect(await res.text()).toBe('');
   });
 
-  it('refuses a symlink that leaves the root (skipped when symlinks are not permitted)', async (ctx) => {
-    if (!symlinkWorks) ctx.skip();
-    expect((await get('app://renderer/link.json')).status).toBe(404);
+  it.skipIf(!SYMLINKS_PERMITTED)(
+    `refuses a file symlink that leaves the root (${SYMLINK_SKIP_REASON})`,
+    async () => {
+      expect((await get('app://renderer/link.json')).status).toBe(404);
+    },
+  );
+  it('refuses a directory junction that leaves the root, without any privilege', async () => {
+    const res = await get('app://renderer/junction/leak.json');
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe('');
   });
 
   it('registers only standard, secure and supportFetchAPI privileges', () => {

@@ -38,3 +38,6 @@ Legend: `[ ]` not done, `[x]` done. Agents never tick a human gate.
 - [ ] H.2 Human listening confirmation that audio is audible and correct in each format.
 - [ ] H.3 Human visual check of spectrum, waveform and EQ.
 - [ ] H.4 Human review and approval of the PR. Merge only with explicit authorization naming this PR.
+
+
+> As-built update: see [as-built.md](as-built.md) for deviations, deferred items (C4/C.3) and final status.

@@ -11,6 +11,7 @@ import { createMediaRegistry } from '@main/library/media-registry';
 import { createMediaProtocolHandler, type MediaFs } from '@main/protocol/media-handler';
 import type { SenderEventLike } from '@main/security/sender-validation';
 import { makeGarbage, makeMp3, makeWav } from '../fixtures/audio/generate-audio';
+import { SYMLINKS_PERMITTED, SYMLINK_SKIP_REASON } from './support/fs-capabilities';
 
 // Block A media access boundaries, with the real filesystem and the real handler + registry
 // wired together. Only Electron's dialog is replaced. Covers path traversal, unauthorised
@@ -315,38 +316,34 @@ describe('media:// access boundaries (real filesystem)', () => {
     expect((await request(track?.mediaUrl as string)).status).toBe(404);
   });
 
-  it('does not follow a symlink that was swapped to a non-audio target after authorisation', async (context) => {
-    const { registry, request } = setup();
-    const link = path.join(root, 'swap.wav');
-    await fsp.writeFile(link, wav);
-    const [track] = await authorise([link], registry);
-    await fsp.rm(link);
-    try {
+  it.skipIf(!SYMLINKS_PERMITTED)(
+    `does not follow a symlink that was swapped to a non-audio target after authorisation (${SYMLINK_SKIP_REASON})`,
+    async () => {
+      const { registry, request } = setup();
+      const link = path.join(root, 'swap.wav');
+      await fsp.writeFile(link, wav);
+      const [track] = await authorise([link], registry);
+      await fsp.rm(link);
       await fsp.symlink(path.join(outside, 'secret.txt'), link);
-    } catch {
-      context.skip('symlink creation is not permitted on this host');
-      return;
-    }
-    const response = await request(track?.mediaUrl as string);
-    expect(response.status).toBe(404);
-    expect(await response.text()).not.toContain('top secret');
-  });
+      const response = await request(track?.mediaUrl as string);
+      expect(response.status).toBe(404);
+      expect(await response.text()).not.toContain('top secret');
+    },
+  );
 
-  it('rechecks the extension after realpath: a symlink to a non-audio target is refused', async (context) => {
-    const { registry, request } = setup();
-    const link = path.join(root, 'link-to-secret.wav');
-    try {
+  it.skipIf(!SYMLINKS_PERMITTED)(
+    `rechecks the extension after realpath: a symlink to a non-audio target is refused (${SYMLINK_SKIP_REASON})`,
+    async () => {
+      const { registry, request } = setup();
+      const link = path.join(root, 'link-to-secret.wav');
       await fsp.symlink(path.join(outside, 'secret.txt'), link);
-    } catch {
-      context.skip('symlink creation is not permitted on this host');
-      return;
-    }
-    const [track] = await authorise([link], registry);
-    expect(track).toBeDefined();
-    const response = await request(track?.mediaUrl as string);
-    expect(response.status).toBe(404);
-    expect(await response.text()).not.toContain('top secret');
-  });
+      const [track] = await authorise([link], registry);
+      expect(track).toBeDefined();
+      const response = await request(track?.mediaUrl as string);
+      expect(response.status).toBe(404);
+      expect(await response.text()).not.toContain('top secret');
+    },
+  );
 
   it('clearing the registry revokes every token (window closed)', async () => {
     const { registry, request } = setup();

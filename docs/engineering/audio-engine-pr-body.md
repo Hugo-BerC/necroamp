@@ -40,6 +40,7 @@ Leave this PR open for human review. Do not merge without explicit authorization
 | Package | Version | License | Kind |
 |---|---|---|---|
 | `music-metadata` | 13.0.1 (exact pin) | MIT | runtime, main process |
+| `wasm-media-encoders` | 0.7.0 (exact pin) | MIT (package `LICENSE`). The WASM embeds libvorbis and libogg (BSD-3-Clause) and LAME (LGPL, unused) | devDependency, test fixtures only. Not imported by `src/`, not in `out/`, not packaged. See `audio-engine-dependency-review.md` |
 
 Its transitive runtime packages, all MIT (from `pnpm licenses list --prod`): `@borewit/text-codec` 0.2.3, `@tokenizer/token` 0.3.0, `content-type` 3.1.1, `debug` 4.4.3, `ms` 2.1.3, `media-typer` 2.0.0, `strtok3` 10.8.0, `token-types` 6.2.0, `win-guid` 0.2.1. No new dev dependencies. `onlyBuiltDependencies` still allows only `esbuild`, so none of these packages runs an install script. `pnpm audit` was not run.
 
@@ -64,13 +65,13 @@ The Low and Info findings below are not fixed in this PR and are listed as limit
 | `pnpm typecheck` | exit 0 |
 | `pnpm lint` | exit 0 |
 | `pnpm format:check` | exit 0 |
-| `pnpm test:coverage` | exit 0. 108 files, 1417 passed, 1 expected fail, 4 skipped (1422 tests) |
+| `pnpm test:coverage` | exit 0. 109 files, 1427 passed, 0 expected fail, 4 skipped (1431 tests). Coverage thresholds unchanged and met |
 | Coverage | statements 99.3% (1993/2007), branches 96.13% (1143/1189), functions 99.16% (474/478), lines 99.5% (1824/1833). Thresholds unchanged. |
 | `pnpm build` | exit 0 |
 | `pnpm test:e2e` | exit 0. 76 passed |
 
-- The expected fail is `metadata.property.test.ts` "D-B1": `cleanText` keeps C1 control characters (defect 0005, open).
-- The skips are symlink tests that need a privilege this Windows host does not grant.
+- There is no expected-failure test. D-B1 (tag text kept C1 and bidi control characters) is fixed in `src/main/library/text.ts` and its regression test is a normal test.
+- The 4 skips are file-symlink tests that need a privilege this Windows host does not grant. Unprivileged junction and mocked-`realpath` equivalents run everywhere (`docs/testing/audio-engine-skips-and-expected-fail.md`).
 
 ## Runtime evidence (automated, not human listening)
 
@@ -93,7 +94,7 @@ Playwright drives the production build in Electron with synthetic, script-genera
 - **AE-05 (Info).** Licenses are checked (all MIT, see above). Advisories are not: `pnpm audit` was not run.
 - **EQ settings are not persisted (spec C4).** No `settings:*` IPC channel exists, so the equalizer resets to Flat on restart.
 - **Ogg Vorbis is verified on Windows only.** A real Ogg Vorbis fixture (libvorbis via the dev-only `wasm-media-encoders` 0.7.0, MIT) decodes in Chromium as a 440 Hz tone and plays with advancing `currentTime`. Ogg Opus is not covered, and macOS and Linux decoders are untested.
-- **Defect D-B1 (0005).** C1 control characters remain in tag text. They are still rendered as text, never as HTML.
+- **Tag text (AE-06, Info).** After the D-B1 fix, a few cosmetic characters (U+2028, U+2029, U+061C, the Unicode tag block) still pass `cleanText`. Tags render as text, never HTML.
 - **Platforms.** Only Windows x64 was tested. macOS and Linux decoders and runtime are not verified, and there is no CI.
 - **Graph tests.** Graph unit tests use a fake `AudioContext`. EQ preamp, band and bypass effects on real audio are covered by `tests/e2e/equalizer-audio.spec.ts`, which reads the spectrum canvas (drawn from the real `AnalyserNode`) while a 440 Hz tone plays.
 - **`docs/assets.md`** does not exist yet. The fixture license note is in `tests/fixtures/audio/README.md`.

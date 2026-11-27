@@ -43,3 +43,6 @@ Authority: `product.md`, `tech.md`, `structure.md`, ADR 0003, 0005, 0006. Assume
 
 ## Out of scope
 Gapless playback, crossfade, `.m3u` import and export, network streams, tag editing, Skin Engine, NecroGit, packaging.
+
+
+> As-built update: see [as-built.md](as-built.md) for deviations, deferred items (C4/C.3) and final status.
