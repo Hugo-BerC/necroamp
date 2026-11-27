@@ -2,6 +2,7 @@ import type { BrowserWindowConstructorOptions } from 'electron';
 import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from '../logging/logger';
 import { createMainWindow, type WindowLike } from './create-main-window';
+import { FRAMELESS_CHROME_PROFILE } from './chrome-profile';
 import type { LoadTarget } from './load-target';
 import { buildWebPreferences } from './window-options';
 
@@ -95,5 +96,45 @@ describe('createMainWindow', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(log.error).toHaveBeenCalledWith('window.load_failed', { code: 'production' });
+  });
+});
+
+describe('createMainWindow: chrome profile and skin constraints', () => {
+  it('defaults to the native frame with Foundation sizes', () => {
+    const { FakeWindow, created } = fakeWindowClass();
+    createMainWindow({
+      BrowserWindow: FakeWindow,
+      preloadPath: PRELOAD,
+      target: PRODUCTION,
+      log: silentLog(),
+    });
+    expect(created[0]?.options).toMatchObject({ frame: true, minWidth: 800, minHeight: 600 });
+  });
+
+  it('builds a frameless window with the skin size and the unchanged security preferences', () => {
+    const { FakeWindow, created } = fakeWindowClass();
+    createMainWindow({
+      BrowserWindow: FakeWindow,
+      preloadPath: PRELOAD,
+      target: PRODUCTION,
+      log: silentLog(),
+      profile: FRAMELESS_CHROME_PROFILE,
+      platform: 'win32',
+      constraints: { minWidth: 700, minHeight: 450, width: 1000, height: 600 },
+    });
+    expect(created[0]?.options).toMatchObject({
+      frame: false,
+      minWidth: 700,
+      minHeight: 450,
+      width: 1000,
+      height: 600,
+    });
+    expect(created[0]?.options.webPreferences).toEqual(buildWebPreferences(PRELOAD));
+    expect(created[0]?.options.webPreferences).toMatchObject({
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webSecurity: true,
+    });
   });
 });

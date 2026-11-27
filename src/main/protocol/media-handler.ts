@@ -2,6 +2,7 @@ import { MEDIA_SCHEME } from '../constants';
 import type { Logger } from '../logging/logger';
 import type { ArtworkStore } from '../library/artwork';
 import type { MediaRegistry } from '../library/media-registry';
+import type { SkinAssetBytes } from '../skins/skin-service';
 import type { ProtocolHandlerApi, SchemeRegistrar } from './app-protocol';
 import { parseMediaUrl, parseRange } from './media-protocol';
 
@@ -22,6 +23,15 @@ export function audioTypeFor(extension: string): string | undefined {
   const key = extension.toLowerCase();
   return Object.hasOwn(AUDIO_TYPES, key) ? AUDIO_TYPES[key] : undefined;
 }
+
+const SKIN_TYPES: Readonly<Record<SkinAssetBytes['type'], string>> = Object.freeze({
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  webp: 'image/webp',
+  woff2: 'font/woff2',
+});
+const SKIN_FETCH_DESTINATIONS: ReadonlySet<string> = new Set(['image', 'font', 'empty']);
+const SVG_RESPONSE_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
 export const MEDIA_SCHEME_ENTRY = Object.freeze({
   scheme: MEDIA_SCHEME,
@@ -50,6 +60,8 @@ export interface MediaProtocolDeps {
   readonly registry: Pick<MediaRegistry, 'resolve'>;
   /** Serves media://art. Without it every art request is a 404. */
   readonly artwork?: Pick<ArtworkStore, 'get'>;
+  /** Serves media://skin. Without it every skin request is a 404. */
+  readonly skins?: { readAsset(token: string): Promise<SkinAssetBytes | undefined> };
   readonly fs: MediaFs;
   /** Origins allowed to read responses. Echoed only when the request `Origin` matches exactly. */
   readonly trusted: readonly string[];
@@ -60,7 +72,7 @@ export interface MediaProtocolDeps {
 export function createMediaProtocolHandler(
   deps: MediaProtocolDeps,
 ): (request: Request) => Promise<Response> {
-  const { registry, artwork, fs, trusted, extname, log } = deps;
+  const { registry, artwork, skins, fs, trusted, extname, log } = deps;
   const baseHeaders = (request: Request): Record<string, string> => {
     const headers: Record<string, string> = {
       'X-Content-Type-Options': 'nosniff',
@@ -100,6 +112,30 @@ export function createMediaProtocolHandler(
         return new Response(request.method === 'HEAD' ? null : art.data, {
           status: 200,
           headers: artHeaders,
+        });
+      }
+      if (parsed.host === 'skin') {
+        // Separate namespace. Not a document, frame or object load (ADR 0008 item 4, AE-04).
+        const dest = request.headers.get('Sec-Fetch-Dest');
+        if (dest !== null && !SKIN_FETCH_DESTINATIONS.has(dest)) {
+          log.warn('media.rejected', { code: 'DEST' });
+          return notFound(request);
+        }
+        const asset = await skins?.readAsset(parsed.token);
+        if (asset === undefined) {
+          log.warn('media.rejected', { code: 'TOKEN' });
+          return notFound(request);
+        }
+        const skinHeaders: Record<string, string> = {
+          ...baseHeaders(request),
+          'Content-Type': SKIN_TYPES[asset.type],
+          'Content-Length': String(asset.bytes.byteLength),
+        };
+        if (asset.type === 'svg') skinHeaders['Content-Security-Policy'] = SVG_RESPONSE_CSP;
+        // Range is ignored on purpose: skin assets are small and always served whole.
+        return new Response(request.method === 'HEAD' ? null : asset.bytes, {
+          status: 200,
+          headers: skinHeaders,
         });
       }
       const registered = registry.resolve(parsed.token);

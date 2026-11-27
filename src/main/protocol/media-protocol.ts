@@ -1,13 +1,13 @@
 /**
  * Pure parsing for the `media://` protocol (ADR 0006 item 5). No I/O, never throws.
  */
-export type MediaHost = 'track' | 'art';
+export type MediaHost = 'track' | 'art' | 'skin';
 
 export type ParsedMediaUrl =
   { readonly ok: true; readonly host: MediaHost; readonly token: string } | { readonly ok: false };
 
 const MEDIA_URL =
-  /^media:\/\/(track|art)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+  /^media:\/\/(track|art|skin)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 
 /**
  * Accepts exactly `media://<track|art>/<lower-case uuid>`. Anything else (credentials, port,

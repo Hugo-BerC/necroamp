@@ -4,7 +4,7 @@ import { buildCsp, buildMetaCsp } from './csp';
 const DEV = 'http://localhost:5173';
 
 const EXPECTED_PRODUCTION =
-  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' media://art; font-src 'self'; " +
+  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' media://art media://skin; font-src 'self' media://skin; " +
   "connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; " +
   "frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; media-src media://track; " +
   "manifest-src 'none'";
@@ -79,13 +79,18 @@ describe('development CSP', () => {
     expect(policy.split(/[\s;]+/)).not.toContain('*');
   });
 
-  it('production differs from the Desktop Foundation policy only in media-src and img-src (S5, ADR 0006 item 7)', () => {
-    const previous = EXPECTED_PRODUCTION.replace(
-      'media-src media://track',
-      "media-src 'none'",
-    ).replace("img-src 'self' media://art", "img-src 'self'");
+  it('production differs from the Desktop Foundation policy only in media-src, img-src and font-src (S5, ADR 0006 item 7, ADR 0008 item 5)', () => {
+    const previous = EXPECTED_PRODUCTION.replace('media-src media://track', "media-src 'none'")
+      .replace("img-src 'self' media://art media://skin", "img-src 'self'")
+      .replace("font-src 'self' media://skin", "font-src 'self'");
     const changed = EXPECTED_PRODUCTION.split('; ').filter((part) => !previous.includes(part));
-    expect(changed).toEqual(["img-src 'self' media://art", 'media-src media://track']);
+    expect(changed).toEqual([
+      "img-src 'self' media://art media://skin",
+      "font-src 'self' media://skin",
+      'media-src media://track',
+    ]);
+    // ADR 0008: the skin host is allowed for images and fonts only, nothing else.
+    expect(EXPECTED_PRODUCTION.match(/media:\/\/skin/g)).toHaveLength(2);
     for (const forbidden of ['blob:', 'data:', '*', 'bypass']) {
       expect(EXPECTED_PRODUCTION).not.toContain(forbidden);
     }

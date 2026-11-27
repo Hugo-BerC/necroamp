@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildMenuTemplate, installAppMenu, type MenuDescriptor } from './app-menu';
+import {
+  buildMenuTemplate,
+  installAppMenu,
+  type MenuDescriptor,
+  type MenuOptions,
+} from './app-menu';
 
 const labelsOf = (template: MenuDescriptor[]): (string | undefined)[] =>
   template.map((item) => item.label ?? item.role);
@@ -10,13 +15,14 @@ describe('buildMenuTemplate', () => {
       'appMenu',
       'File',
       'editMenu',
+      'View',
       'windowMenu',
     ]);
   });
 
-  it.each(['win32', 'linux', 'freebsd'])('uses File, Edit and Window on %s', (platform) => {
+  it.each(['win32', 'linux', 'freebsd'])('uses File, Edit, View and Window on %s', (platform) => {
     const template = buildMenuTemplate({ platform, isDevRun: false });
-    expect(labelsOf(template)).toEqual(['File', 'Edit', 'Window']);
+    expect(labelsOf(template)).toEqual(['File', 'Edit', 'View', 'Window']);
     const file = template[0]?.submenu ?? [];
     expect(file.at(-1)).toEqual({ role: 'quit' });
     expect(file.map((i) => i.label)).toEqual([
@@ -30,15 +36,79 @@ describe('buildMenuTemplate', () => {
   });
 
   it.each(['win32', 'darwin', 'linux', 'freebsd'])(
-    'shows the View menu only in a development run (%s)',
+    'always has a View menu; reload and DevTools exist only in a development run (%s)',
     (platform) => {
       const dev = buildMenuTemplate({ platform, isDevRun: true });
       const prod = buildMenuTemplate({ platform, isDevRun: false });
       expect(labelsOf(dev)).toContain('View');
-      expect(labelsOf(prod)).not.toContain('View');
+      expect(labelsOf(prod)).toContain('View');
       expect(JSON.stringify(prod)).not.toMatch(/toggleDevTools|reload/);
+      expect(JSON.stringify(dev)).toMatch(/toggleDevTools/);
     },
   );
+});
+
+describe('View > Skin', () => {
+  const view = (options: Partial<MenuOptions> = {}) => {
+    const template = buildMenuTemplate({ platform: 'win32', isDevRun: false, ...options });
+    return template.find((item) => item.label === 'View')?.submenu ?? [];
+  };
+
+  it('offers Foundation as the only skin when none is given', () => {
+    const skin = view()[0];
+    expect(skin?.label).toBe('Skin');
+    expect(skin?.submenu).toEqual([
+      expect.objectContaining({
+        id: 'skin:foundation',
+        label: 'Foundation',
+        type: 'radio',
+        checked: true,
+        enabled: true,
+      }),
+    ]);
+  });
+
+  it('lists every skin as a radio item, checks the active one and disables unusable skins', () => {
+    const items =
+      view({
+        skins: [
+          { id: 'foundation', name: 'Foundation', enabled: true },
+          { id: 'morgul-revenant', name: 'Morgul Revenant', enabled: true },
+          { id: 'broken', name: 'Broken', enabled: false },
+        ],
+        activeSkinId: 'morgul-revenant',
+      })[0]?.submenu ?? [];
+    expect(items.map((i) => [i.id, i.checked, i.enabled])).toEqual([
+      ['skin:foundation', false, true],
+      ['skin:morgul-revenant', true, true],
+      ['skin:broken', false, false],
+    ]);
+  });
+
+  it('selects a skin by id and opens the picker through the command channel', () => {
+    const onSelectSkin = vi.fn();
+    const onCommand = vi.fn();
+    const items = view({ onSelectSkin, onCommand });
+    items[0]?.submenu?.[0]?.click?.();
+    expect(onSelectSkin).toHaveBeenCalledWith('foundation');
+    const picker = items.find((i) => i.label === 'Skins…');
+    picker?.click?.();
+    expect(onCommand).toHaveBeenCalledWith('open-skin-picker');
+  });
+
+  it('does not throw without sinks', () => {
+    const items = view();
+    expect(() => items[0]?.submenu?.[0]?.click?.()).not.toThrow();
+    expect(() => items.at(-1)?.click?.()).not.toThrow();
+  });
+
+  it('keeps the native File menu in every configuration', () => {
+    for (const platform of ['win32', 'linux', 'darwin']) {
+      const template = buildMenuTemplate({ platform, isDevRun: false });
+      const file = template.find((item) => item.label === 'File');
+      expect(file?.submenu?.[0]?.label).toBe('Open Files…');
+    }
+  });
 });
 
 describe('File menu commands', () => {
@@ -101,5 +171,17 @@ describe('installAppMenu', () => {
     expect(item.enabled).toBe(true);
     controller.setClearPlaylistEnabled(false);
     expect(item.enabled).toBe(false);
+  });
+
+  it('checks the radio item of the active skin and ignores unknown ids', () => {
+    const item: { enabled: boolean; checked?: boolean } = { enabled: true };
+    const built = {
+      getMenuItemById: vi.fn((id: string) => (id === 'skin:morgul-revenant' ? item : null)),
+    };
+    const menu = { buildFromTemplate: vi.fn(() => built), setApplicationMenu: vi.fn() };
+    const controller = installAppMenu(menu, { platform: 'win32', isDevRun: false });
+    controller.setActiveSkin('morgul-revenant');
+    expect(item.checked).toBe(true);
+    expect(() => controller.setActiveSkin('nope')).not.toThrow();
   });
 });

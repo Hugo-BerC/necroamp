@@ -21,7 +21,7 @@ describe('preload entry', () => {
     expect(exposeInMainWorld).toHaveBeenCalledTimes(1);
     const [key, api] = exposeInMainWorld.mock.calls[0] as [string, Record<string, unknown>];
     expect(key).toBe('necroamp');
-    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist', 'menu']);
+    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist', 'menu', 'skins', 'window']);
     expect(Object.keys(api['library'] as object)).toEqual([
       'openFiles',
       'openFolder',

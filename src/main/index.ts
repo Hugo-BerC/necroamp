@@ -23,13 +23,26 @@ import { createMediaRegistry } from './library/media-registry';
 import { createMetadataReader } from './library/metadata';
 import { createPlaylistPersistence } from './library/playlist-persistence';
 import { createLogger } from './logging/logger';
+import type { SkinFs } from './skins/asset-files';
+import { createSkinPreference } from './skins/skin-preference';
+import { resolveSkinRoots } from './skins/skin-roots';
+import { createSkinService, type SkinService } from './skins/skin-service';
+import { createSkinTokenStore } from './skins/skin-tokens';
 import { installAppProtocol } from './protocol/app-protocol';
 import { installMediaProtocol } from './protocol/media-handler';
 import { registerPrivilegedSchemes } from './protocol/register-schemes';
 import { buildCsp } from './security/csp';
 import { installDevCspHook } from './security/dev-csp';
 import { resolveTrustedOrigins } from './security/trusted-origins';
+import { FRAMELESS_CHROME_PROFILE } from './window/chrome-profile';
 import { createMainWindow } from './window/create-main-window';
+import {
+  applyWindowConstraints,
+  attachWindowStatePush,
+  createWindowControls,
+  type WindowControls,
+} from './window/window-controls';
+import { constraintsFromSkinWindow } from './window/window-options';
 import { resolveLoadTarget } from './window/load-target';
 import { installNavigationGuards } from './window/navigation-guards';
 import { installPermissionHandlers } from './window/permissions';
@@ -68,10 +81,30 @@ const disposers: (() => void)[] = [];
 let appMenu: AppMenuController | null = null;
 const mediaRegistry = createMediaRegistry();
 const artworkStore = createArtworkStore();
+const skinTokens = createSkinTokenStore();
+let windowControls: WindowControls | null = null;
+// Created after `ready` (it needs `app.getPath`). The window is only opened after that.
+let skinService: SkinService | null = null;
 
 function openMainWindow(): void {
-  const window = createMainWindow({ BrowserWindow, preloadPath, target, log });
+  const activeSkin = skinService?.getActive().skin.manifest.window;
+  const window = createMainWindow({
+    BrowserWindow,
+    preloadPath,
+    target,
+    log,
+    // Frameless chrome (ADR 0009). The trusted renderer title bar draws the decoration.
+    profile: FRAMELESS_CHROME_PROFILE,
+    platform: process.platform,
+    ...(activeSkin === undefined ? {} : { constraints: constraintsFromSkinWindow(activeSkin) }),
+  });
   mainWindow = window;
+  const controls = createWindowControls(window, process.platform);
+  windowControls = controls;
+  const detachStatePush = attachWindowStatePush(window, controls, (state) => {
+    if (!window.isDestroyed())
+      window.webContents.send(IPC_EVENT_CHANNELS.windowStateChanged, state);
+  });
   attachRendererCrashHandler(
     {
       onRenderProcessGone: (listener) =>
@@ -82,8 +115,14 @@ function openMainWindow(): void {
     log,
   );
   window.on('closed', () => {
-    if (mainWindow === window) mainWindow = null;
+    if (mainWindow === window) {
+      mainWindow = null;
+      windowControls = null;
+    }
+    detachStatePush();
     mediaRegistry.clear();
+    // A reopened window asks for the active skin again and receives fresh tokens.
+    skinService?.clearTokens();
     appMenu?.setClearPlaylistEnabled(false);
     artworkStore.clear();
   });
@@ -112,8 +151,40 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
   });
 
   // 7. Everything that needs `ready`.
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     installPermissionHandlers(session.defaultSession);
+    // Skin preference and scan run before the window exists, so the first window uses the skin's
+    // size (ADR 0008). Any failure leaves Foundation active.
+    const skinFs: SkinFs = {
+      lstat: (p) => fs.lstat(p),
+      realpath: (p) => fs.realpath(p),
+      readdir: (p) => fs.readdir(p),
+      readFile: (p) => fs.readFile(p),
+    };
+    const service = createSkinService({
+      fs: skinFs,
+      pathApi: path,
+      roots: resolveSkinRoots({
+        isPackaged: app.isPackaged,
+        appPath: app.getAppPath(),
+        resourcesPath: process.resourcesPath,
+        join: path.join,
+      }),
+      preference: createSkinPreference({
+        fs: {
+          readFile: (p) => fs.readFile(p, 'utf8'),
+          writeFile: (p, data) => fs.writeFile(p, data, 'utf8'),
+          rename: (from, to) => fs.rename(from, to),
+          rm: (p) => fs.rm(p, { force: true }),
+        },
+        filePath: path.join(app.getPath('userData'), 'skin-preference.json'),
+        log,
+      }),
+      tokens: skinTokens,
+      log,
+    });
+    await service.initialize();
+    skinService = service;
     disposers.push(
       installAppProtocol(protocol, {
         fs,
@@ -127,6 +198,7 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
       installMediaProtocol(protocol, {
         registry: mediaRegistry,
         artwork: artworkStore,
+        skins: service,
         fs: {
           realpath: (p) => fs.realpath(p),
           stat: (p) => fs.stat(p),
@@ -164,6 +236,8 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
           path,
         },
         setClearPlaylistEnabled: (enabled) => appMenu?.setClearPlaylistEnabled(enabled),
+        skins: service,
+        getWindowControls: () => windowControls,
         registry: mediaRegistry,
         metadata: createMetadataReader({ parseFile, log }),
         artwork: artworkStore,
@@ -182,6 +256,12 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
     appMenu = installAppMenu(Menu, {
       platform: process.platform,
       isDevRun,
+      skins: service.menuEntries(),
+      activeSkinId: service.getActive().activeId,
+      onSelectSkin: (skinId) => {
+        // Same authority as skins:set-active. The change listener below pushes skins:changed.
+        void service.setActive(skinId, 'menu');
+      },
       onCommand: (command) => {
         const window = mainWindow;
         if (window === null || window.isDestroyed()) return;
@@ -191,6 +271,16 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         window.webContents.send(IPC_EVENT_CHANNELS.menuCommand, { command });
       },
     });
+    disposers.push(
+      service.onChange(({ active, source }) => {
+        appMenu?.setActiveSkin(active.activeId);
+        const window = mainWindow;
+        if (window === null || window.isDestroyed()) return;
+        applyWindowConstraints(window, constraintsFromSkinWindow(active.skin.manifest.window));
+        // A renderer-initiated change already has its answer. Only menu changes are pushed.
+        if (source === 'menu') window.webContents.send(IPC_EVENT_CHANNELS.skinsChanged, active);
+      }),
+    );
     openMainWindow();
   });
 }

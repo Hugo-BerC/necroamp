@@ -1,8 +1,13 @@
 import type { BrowserWindowConstructorOptions } from 'electron';
 import type { Logger } from '../logging/logger';
-import { NATIVE_CHROME_PROFILE } from './chrome-profile';
+import { NATIVE_CHROME_PROFILE, type ChromeProfile } from './chrome-profile';
 import type { LoadTarget } from './load-target';
-import { buildWebPreferences, buildWindowOptions } from './window-options';
+import {
+  FOUNDATION_CONSTRAINTS,
+  buildWebPreferences,
+  buildWindowOptions,
+  type WindowConstraints,
+} from './window-options';
 
 /**
  * The only file that constructs a window (R3.1). The constructor is injected so tests do not
@@ -20,12 +25,19 @@ export interface MainWindowDeps<W extends WindowLike> {
   readonly preloadPath: string;
   readonly target: LoadTarget;
   readonly log: Logger;
+  /** Defaults to the native profile. Production passes the frameless profile (ADR 0009). */
+  readonly profile?: ChromeProfile;
+  /** Active skin size constraints. Defaults to Foundation. */
+  readonly constraints?: WindowConstraints;
+  readonly platform?: string;
 }
 
 export function createMainWindow<W extends WindowLike>(deps: MainWindowDeps<W>): W {
   const { BrowserWindow, preloadPath, target, log } = deps;
+  const profile = deps.profile ?? NATIVE_CHROME_PROFILE;
+  const constraints = deps.constraints ?? FOUNDATION_CONSTRAINTS;
   const window = new BrowserWindow({
-    ...buildWindowOptions(NATIVE_CHROME_PROFILE),
+    ...buildWindowOptions(profile, constraints, deps.platform),
     webPreferences: buildWebPreferences(preloadPath),
   });
   window.once('ready-to-show', () => window.show());

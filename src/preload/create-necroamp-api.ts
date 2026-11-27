@@ -17,10 +17,22 @@ import {
   playlistSaveResponseSchema,
   resolveTrackRequestSchema,
   resolveTrackResponseSchema,
+  skinsChangedEventSchema,
+  skinsGetActiveRequestSchema,
+  skinsGetActiveResponseSchema,
+  skinsListRequestSchema,
+  skinsListResponseSchema,
+  skinsSetActiveRequestSchema,
+  skinsSetActiveResponseSchema,
+  windowActionRequestSchema,
+  windowActionResponseSchema,
+  windowGetStateRequestSchema,
+  windowGetStateResponseSchema,
+  windowStateChangedEventSchema,
   type IpcChannel,
   type IpcEventChannel,
-  type NecroampApi,
 } from '@shared/ipc';
+import type { NecroampBridge, SkinsBridge, WindowBridge } from './bridge-types';
 
 /**
  * The only IPC capability the bridge receives: invoke one named channel with validated arguments.
@@ -53,7 +65,7 @@ const INVALID_PAYLOAD_RESULT = Object.freeze({
 export function createNecroampApi(
   invoke: InvokeChannel,
   subscribe: SubscribeChannel = NOOP_SUBSCRIBE,
-): NecroampApi {
+): NecroampBridge {
   const invalidPayload = (): unknown => ({
     ...INVALID_PAYLOAD_RESULT,
     error: { ...INVALID_PAYLOAD_RESULT.error },
@@ -185,9 +197,108 @@ export function createNecroampApi(
     };
   };
 
+  /** Subscribes a validated listener. Invalid payloads are dropped and listener errors are contained. */
+  const subscribeValidated = <T>(
+    channel: IpcEventChannel,
+    schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } },
+    listener: unknown,
+  ): (() => void) => {
+    if (typeof listener !== 'function') return () => undefined;
+    const callback = listener as (value: T) => void;
+    let active = true;
+    let unsubscribe: () => void;
+    try {
+      unsubscribe = subscribe(channel, (payload) => {
+        if (!active) return;
+        const parsed = schema.safeParse(payload);
+        if (!parsed.success) return;
+        try {
+          callback(parsed.data);
+        } catch {
+          // A throwing listener must not break the bridge. Its message is dropped on purpose.
+        }
+      });
+    } catch {
+      return () => undefined;
+    }
+    return () => {
+      if (!active) return;
+      active = false;
+      try {
+        unsubscribe();
+      } catch {
+        // Already detached.
+      }
+    };
+  };
+  const noArgs = async (
+    channel: IpcChannel,
+    requestSchema: { safeParse(value: unknown): { success: boolean } },
+    responseSchema: {
+      safeParse(value: unknown): { success: true; data: unknown } | { success: false };
+    },
+    args: unknown[],
+  ): Promise<unknown> => {
+    if (!requestSchema.safeParse(args).success) return invalidPayload();
+    return call(channel, [], responseSchema);
+  };
+  const skins: SkinsBridge = Object.freeze({
+    list: (...args: unknown[]) =>
+      noArgs(IPC_CHANNELS.skinsList, skinsListRequestSchema, skinsListResponseSchema, args),
+    getActive: (...args: unknown[]) =>
+      noArgs(
+        IPC_CHANNELS.skinsGetActive,
+        skinsGetActiveRequestSchema,
+        skinsGetActiveResponseSchema,
+        args,
+      ),
+    setActive: async (...args: unknown[]): Promise<unknown> => {
+      const request = skinsSetActiveRequestSchema.safeParse(args);
+      if (!request.success) return invalidPayload();
+      // Re-built from the parsed value so no extra property can travel across the bridge.
+      return call(
+        IPC_CHANNELS.skinsSetActive,
+        [{ skinId: request.data[0].skinId }],
+        skinsSetActiveResponseSchema,
+      );
+    },
+    onChanged: (listener: unknown) =>
+      subscribeValidated(IPC_EVENT_CHANNELS.skinsChanged, skinsChangedEventSchema, listener),
+  } as SkinsBridge);
+  const windowBridge: WindowBridge = Object.freeze({
+    minimize: (...args: unknown[]) =>
+      noArgs(
+        IPC_CHANNELS.windowMinimize,
+        windowActionRequestSchema,
+        windowActionResponseSchema,
+        args,
+      ),
+    toggleMaximize: (...args: unknown[]) =>
+      noArgs(
+        IPC_CHANNELS.windowToggleMaximize,
+        windowActionRequestSchema,
+        windowActionResponseSchema,
+        args,
+      ),
+    close: (...args: unknown[]) =>
+      noArgs(IPC_CHANNELS.windowClose, windowActionRequestSchema, windowActionResponseSchema, args),
+    getState: (...args: unknown[]) =>
+      noArgs(
+        IPC_CHANNELS.windowGetState,
+        windowGetStateRequestSchema,
+        windowGetStateResponseSchema,
+        args,
+      ),
+    onStateChanged: (listener: unknown) =>
+      subscribeValidated(
+        IPC_EVENT_CHANNELS.windowStateChanged,
+        windowStateChangedEventSchema,
+        listener,
+      ),
+  } as WindowBridge);
   const app = Object.freeze({ getInfo });
   const library = Object.freeze({ openFiles, openFolder, resolveTrack });
   const playlist = Object.freeze({ load: playlistLoad, save: playlistSave });
   const menu = Object.freeze({ onCommand, reportPlaylistState });
-  return Object.freeze({ app, library, playlist, menu });
+  return Object.freeze({ app, library, playlist, menu, skins, window: windowBridge });
 }

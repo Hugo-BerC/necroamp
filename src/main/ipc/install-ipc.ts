@@ -10,6 +10,8 @@ import { registerLibraryHandlers, type LibraryHandlerDeps } from './library-hand
 import { registerFolderHandlers, type FolderHandlerDeps } from './folder-handlers';
 import { registerMenuHandlers } from './menu-handlers';
 import { registerPlaylistHandlers } from './playlist-handlers';
+import { registerSkinsHandlers, type SkinsHandlerDeps } from './skins-handlers';
+import { registerWindowHandlers, type WindowHandlerDeps } from './window-handlers';
 import { registerTrackHandlers } from './track-handlers';
 import type { IpcMainLike } from './register-handler';
 
@@ -39,6 +41,10 @@ export interface InstallIpcDeps {
   readonly setClearPlaylistEnabled?: (enabled: boolean) => void;
   /** When present, library:resolve-track and the playlist:* channels are registered. */
   readonly playlistPersistence?: PlaylistPersistence;
+  /** When present, the skins:* channels are registered. */
+  readonly skins?: SkinsHandlerDeps['skins'];
+  /** When present, the window:* channels are registered. */
+  readonly getWindowControls?: WindowHandlerDeps['getControls'];
 }
 
 export function installIpcHandlers(deps: InstallIpcDeps): () => void {
@@ -93,6 +99,21 @@ export function installIpcHandlers(deps: InstallIpcDeps): () => void {
   if (setClearPlaylistEnabled !== undefined) {
     disposers.push(
       registerMenuHandlers({ ipcMain, setClearPlaylistEnabled, isTrustedSender: senderCheck, log }),
+    );
+  }
+  if (deps.skins !== undefined) {
+    disposers.push(
+      registerSkinsHandlers({ ipcMain, skins: deps.skins, isTrustedSender: senderCheck, log }),
+    );
+  }
+  if (deps.getWindowControls !== undefined) {
+    disposers.push(
+      registerWindowHandlers({
+        ipcMain,
+        getControls: deps.getWindowControls,
+        isTrustedSender: senderCheck,
+        log,
+      }),
     );
   }
   return () => {
