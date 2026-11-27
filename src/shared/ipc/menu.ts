@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { ipcResultSchema } from './result';
 
 /** Commands the native menu can send to the renderer. */
-export const MENU_COMMANDS = ['open-files', 'open-folder', 'clear-playlist'] as const;
+export const MENU_COMMANDS = [
+  'open-files',
+  'open-folder',
+  'clear-playlist',
+  'open-skin-picker',
+] as const;
 
 /** `menu:command` (main -> renderer). Carries a command name only, never data. */
 export const menuCommandSchema = z.strictObject({ command: z.enum(MENU_COMMANDS) });

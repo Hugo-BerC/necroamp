@@ -2,6 +2,19 @@
 
 Log of shared contract changes under `src/shared/`, newest first. Format and triggers follow `docs/engineering/shared-ownership-policy.md` section 3.3. Additive changes need no entry. Owner of the log: necro-architect. Closes finding C-2 of the T3.4 addendum in `docs/adr/0005-ipc-security-model-and-main-process-lifecycle.md`.
 
+## Skin Engine (planned, feature/skin-engine): region model, contrast, media host
+
+- **Status.** Planned in `docs/architecture/skin-engine-contract.md` section 14. Not implemented when written. The implementer confirms in its hand-off.
+- **Contract paths.** New `src/shared/skins/**` (ADR 0007); `src/shared/ipc/{channels,menu,skins,window,necroamp-api}.ts`; `src/main/protocol/media-protocol.ts` (`MediaHost`).
+- **What changed and why.**
+  - `REGION_IDS` moves to `@shared/skins`. `player` and `skin-selector` are removed; `track-info`, `artwork`, `transport`, `seek`, `volume`, `status` are added. Reason: skins place each control group independently (ADR 0007 item 2).
+  - `contrastRatio` moves to `@shared/skins/contrast.ts` so the scanner and renderer share one implementation. `src/renderer/app/theme/contrast.ts` re-exports it. No behavior change.
+  - `MediaHost` widens to `track | art | skin` (ADR 0008).
+  - Additive: `skins:*` and `window:*` channels, `MENU_COMMANDS` gains `open-skin-picker`, `ChromeProfile` gains `frameless`, `buildWindowOptions` gains a constraints argument.
+- **Affected consumers and owners.** frontend-engineer: `region-frame/region-ids.ts`, `app/shell-layout.ts`, `app/app-shell.tsx`, the player region split. qa-engineer: E2E selectors for `data-testid="player"` and `"skin-selector"`, media URL reject-set tests. desktop-engineer: `media-protocol.ts`, `media-handler.ts`, `chrome-profile.ts`, `window-options.ts`, `app-menu.ts`.
+- **Migration.** `PlayerRegion` becomes five slot components on `use-player`. Tests that assert `skin` is a rejected media host drop that case.
+- **Reviewers.** necro-architect (author), security-reviewer (media host, CSP, window IPC), art-director (format).
+
 ## 2026-11 (Desktop Foundation M3): initial `app:get-info` contract baseline
 
 - **Type of entry.** Baseline, not a breaking change. Every later change to the items below is measured against this entry.

@@ -11,11 +11,22 @@ describe('IPC_CHANNELS', () => {
       menuReportState: 'menu:report-state',
       playlistLoad: 'playlist:load',
       playlistSave: 'playlist:save',
+      skinsList: 'skins:list',
+      skinsGetActive: 'skins:get-active',
+      skinsSetActive: 'skins:set-active',
+      windowMinimize: 'window:minimize',
+      windowToggleMaximize: 'window:toggle-maximize',
+      windowClose: 'window:close',
+      windowGetState: 'window:get-state',
     });
   });
 
   it('keeps push channels out of the invokable set', () => {
-    expect(IPC_EVENT_CHANNELS).toEqual({ menuCommand: 'menu:command' });
+    expect(IPC_EVENT_CHANNELS).toEqual({
+      menuCommand: 'menu:command',
+      skinsChanged: 'skins:changed',
+      windowStateChanged: 'window:state-changed',
+    });
     for (const name of Object.values(IPC_EVENT_CHANNELS)) {
       expect(Object.values(IPC_CHANNELS)).not.toContain(name);
     }

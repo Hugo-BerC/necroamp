@@ -69,3 +69,31 @@ export {
   type PlaylistSaveResponse,
 } from './playlist-store';
 export { resolveSelectedTrackId } from './selected-track';
+export {
+  SKIN_FALLBACK_REASONS,
+  activeSkinSchema,
+  skinStatusSchema,
+  skinSummarySchema,
+  skinsChangedEventSchema,
+  skinsGetActiveRequestSchema,
+  skinsGetActiveResponseSchema,
+  skinsListRequestSchema,
+  skinsListResponseSchema,
+  skinsSetActiveRequestSchema,
+  skinsSetActiveResponseSchema,
+  type ActiveSkin,
+  type SkinSummary,
+  type SkinsGetActiveResponse,
+  type SkinsListResponse,
+  type SkinsSetActiveRequest,
+  type SkinsSetActiveResponse,
+} from './skins';
+export {
+  windowActionRequestSchema,
+  windowActionResponseSchema,
+  windowGetStateRequestSchema,
+  windowGetStateResponseSchema,
+  windowStateChangedEventSchema,
+  windowStateSchema,
+  type WindowState,
+} from './window';
