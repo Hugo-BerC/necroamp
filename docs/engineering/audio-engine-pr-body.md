@@ -65,10 +65,10 @@ The Low and Info findings below are not fixed in this PR and are listed as limit
 | `pnpm typecheck` | exit 0 |
 | `pnpm lint` | exit 0 |
 | `pnpm format:check` | exit 0 |
-| `pnpm test:coverage` | exit 0. 109 files, 1427 passed, 0 expected fail, 4 skipped (1431 tests). Coverage thresholds unchanged and met |
+| `pnpm test:coverage` | exit 0. 115 files, 1530 passed, 0 expected fail, 8 skipped (1538 tests; all skips are conditional on symlink privilege). Coverage thresholds unchanged and met |
 | Coverage | statements 99.3% (1993/2007), branches 96.13% (1143/1189), functions 99.16% (474/478), lines 99.5% (1824/1833). Thresholds unchanged. |
 | `pnpm build` | exit 0 |
-| `pnpm test:e2e` | exit 0. 80 passed |
+| `pnpm test:e2e` | exit 0. 82 passed |
 
 - There is no expected-failure test. D-B1 (tag text kept C1 and bidi control characters) is fixed in `src/main/library/text.ts` and its regression test is a normal test.
 - The 4 skips are file-symlink tests that need a privilege this Windows host does not grant. Unprivileged junction and mocked-`realpath` equivalents run everywhere (`docs/testing/audio-engine-skips-and-expected-fail.md`).
@@ -132,3 +132,4 @@ Prerequisites: Node 24 and pnpm 10, then `pnpm install --frozen-lockfile`. Use y
 11. Corrupt file check: copy any non-audio file and rename it `broken.mp3`, then add it. The app should show an error for that track, not crash, and skip it during automatic progression.
 
 Report what you heard and saw on the PR. Those observations are the input for gates H.2 and H.3.
+
