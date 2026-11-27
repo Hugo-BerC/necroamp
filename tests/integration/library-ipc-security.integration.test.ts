@@ -204,8 +204,8 @@ describe('preload API surface', () => {
   it('exposes only the typed app, library and playlist methods, with no generic sender', () => {
     const { api } = wire();
     // Block B adds library.resolveTrack and playlist.load/save. Nothing else may appear.
-    expect(Object.keys(api).sort()).toEqual(['app', 'library', 'playlist']);
-    expect(Object.keys(api.library).sort()).toEqual(['openFiles', 'resolveTrack']);
+    expect(Object.keys(api).sort()).toEqual(['app', 'library', 'menu', 'playlist']);
+    expect(Object.keys(api.library).sort()).toEqual(['openFiles', 'openFolder', 'resolveTrack']);
     expect(Object.keys(api.playlist).sort()).toEqual(['load', 'save']);
     const everyName = JSON.stringify([
       ...Object.keys(api),

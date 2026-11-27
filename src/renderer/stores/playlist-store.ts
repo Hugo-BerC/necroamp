@@ -56,6 +56,8 @@ export type PlaylistNotice =
   | { readonly code: 'load-failed' }
   | { readonly code: 'save-failed' }
   | { readonly code: 'list-full' }
+  | { readonly code: 'folder-empty' }
+  | { readonly code: 'folder-truncated' }
   | { readonly code: 'track-unavailable' }
   | { readonly code: 'all-failed' };
 
@@ -71,6 +73,10 @@ export interface PlaylistState {
   readonly notice: PlaylistNotice | null;
   /** Opens the native dialog with multi-select and appends the chosen files. */
   readonly addFiles: () => Promise<void>;
+  /** Opens the native folder dialog and appends the audio files found, like ddFiles. */
+  readonly addFolder: () => Promise<void>;
+  /** Stops playback, empties the playlist and saves at once. Used by the native menu. */
+  readonly clearAndSave: () => Promise<void>;
   /** Selects and plays the item at `index`. */
   readonly playIndex: (index: number) => Promise<void>;
   readonly next: () => Promise<void>;
@@ -218,6 +224,21 @@ export function createPlaylistStore(
       scheduleSave();
     };
 
+    /** Shared by Add files and Add folder, so both paths insert, cap and persist identically. */
+    const appendTracks = (tracks: readonly TrackInfo[], truncated = false): void => {
+      if (tracks.length === 0) {
+        return; // The dialog was cancelled.
+      }
+      const before = snapshot();
+      const after = insertItems(before, tracks);
+      const full = after.items.length - before.items.length < tracks.length;
+      set({
+        notice: full ? { code: 'list-full' } : truncated ? { code: 'folder-truncated' } : null,
+      });
+      if (after !== before) {
+        edit(after);
+      }
+    };
     return {
       items: [],
       current: null,
@@ -232,19 +253,36 @@ export function createPlaylistStore(
           set({ notice: { code: 'open-failed', reason: result.reason } });
           return;
         }
-        const tracks = result.data.tracks;
-        if (tracks.length === 0) {
-          return; // The dialog was cancelled.
-        }
-        const before = snapshot();
-        const after = insertItems(before, tracks);
-        const full = after.items.length - before.items.length < tracks.length;
-        set({ notice: full ? { code: 'list-full' } : null });
-        if (after !== before) {
-          edit(after);
-        }
+        appendTracks(result.data.tracks);
       },
-
+      addFolder: async () => {
+        if (library.openFolder === undefined) {
+          set({ notice: { code: 'open-failed', reason: 'unavailable' } });
+          return;
+        }
+        const result = await library.openFolder();
+        if (!result.ok) {
+          set({ notice: { code: 'open-failed', reason: result.reason } });
+          return;
+        }
+        const { tracks, canceled, truncated } = result.data;
+        if (canceled) {
+          return;
+        }
+        if (tracks.length === 0) {
+          set({ notice: { code: 'folder-empty' } });
+          return;
+        }
+        appendTracks(tracks, truncated);
+      },
+      clearAndSave: async () => {
+        port.stop();
+        set({ notice: null });
+        if (get().items.length > 0) {
+          edit(emptyPlaylist<TrackInfo>());
+        }
+        await save();
+      },
       playIndex: async (index) => {
         const item = get().items[index];
         if (item === undefined) {

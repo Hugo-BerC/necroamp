@@ -8,8 +8,9 @@ describe('createNecroampApi exposure boundary', () => {
   const api = createNecroampApi(() => Promise.resolve(VALID));
 
   it('exposes exactly the app, library and playlist methods', () => {
-    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist']);
-    expect(Object.keys(api.library)).toEqual(['openFiles', 'resolveTrack']);
+    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist', 'menu']);
+    expect(Object.keys(api.library)).toEqual(['openFiles', 'openFolder', 'resolveTrack']);
+    expect(Object.keys(api.menu)).toEqual(['onCommand', 'reportPlaylistState']);
     expect(Object.keys(api.playlist)).toEqual(['load', 'save']);
     expect(Object.keys(api.app)).toEqual(['getInfo']);
     expect(typeof api.app.getInfo).toBe('function');

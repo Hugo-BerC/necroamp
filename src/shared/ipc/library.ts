@@ -41,3 +41,20 @@ export const resolveTrackResponseSchema = ipcResultSchema(
   ]),
 );
 export type ResolveTrackResponse = z.infer<typeof resolveTrackResponseSchema>;
+
+/** `library:open-folder`: no arguments. Main shows the directory dialog and scans. */
+export const openFolderRequestSchema = z.tuple([]);
+export type OpenFolderRequest = z.infer<typeof openFolderRequestSchema>;
+
+/**
+ * `canceled`: the user dismissed the dialog. `truncated`: a bound (track count, depth or visited
+ * entries) stopped discovery early. An empty folder is `canceled: false` with no tracks.
+ */
+export const openFolderResponseSchema = ipcResultSchema(
+  z.strictObject({
+    tracks: z.array(trackInfoSchema).max(MAX_TRACKS_PER_REQUEST),
+    canceled: z.boolean(),
+    truncated: z.boolean(),
+  }),
+);
+export type OpenFolderResponse = z.infer<typeof openFolderResponseSchema>;

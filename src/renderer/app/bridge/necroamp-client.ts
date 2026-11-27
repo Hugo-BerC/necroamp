@@ -1,11 +1,19 @@
+import type { MenuCommand } from '@shared/ipc';
 import {
   appInfoResponseSchema,
+  menuCommandSchema,
+  menuReportStateResponseSchema,
   openFilesResponseSchema,
+  openFolderResponseSchema,
   playlistLoadResponseSchema,
   playlistSaveResponseSchema,
 } from '@shared/ipc';
 import type { AppInfoClient, AppInfoClientResult } from '@renderer/stores/app-info-store';
-import type { LibraryClient, LibraryClientResult } from '@renderer/stores/player-store';
+import type {
+  LibraryClient,
+  LibraryClientResult,
+  OpenFolderClientResult,
+} from '@renderer/stores/player-store';
 import type {
   PlaylistLoadResult,
   PlaylistPersistenceClient,
@@ -103,6 +111,26 @@ export function createLibraryClient(host: BridgeHost): LibraryClient {
       }
       return { ok: true, data: parsed.data.data };
     },
+    openFolder: async (): Promise<OpenFolderClientResult> => {
+      const openFolder = readLibraryFunction(host, 'openFolder');
+      if (openFolder === undefined) {
+        return { ok: false, reason: 'unavailable' };
+      }
+      let raw: unknown;
+      try {
+        raw = await openFolder();
+      } catch {
+        return { ok: false, reason: 'rejected' };
+      }
+      const parsed = openFolderResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        return { ok: false, reason: 'invalid-response' };
+      }
+      if (!parsed.data.ok) {
+        return { ok: false, reason: 'ipc-error' };
+      }
+      return { ok: true, data: parsed.data.data };
+    },
   };
 }
 
@@ -156,6 +184,72 @@ export function createPlaylistClient(host: BridgeHost): PlaylistPersistenceClien
         return { ok: false, reason: 'invalid-response' };
       }
       return parsed.data.ok ? { ok: true } : { ok: false, reason: 'ipc-error' };
+    },
+  };
+}
+
+function readLibraryFunction(host: BridgeHost, name: string): (() => Promise<unknown>) | undefined {
+  const bridge = host.necroamp;
+  if (!isRecord(bridge)) {
+    return undefined;
+  }
+  const library = bridge['library'];
+  if (!isRecord(library) || typeof library[name] !== 'function') {
+    return undefined;
+  }
+  // Call through the namespace object so `this` is preserved. The result is parsed by the caller.
+  return () => Promise.resolve((library[name] as () => unknown)());
+}
+
+/** What the app needs from the native menu bridge. Tests pass a fake. */
+export interface MenuClient {
+  /** Returns an unsubscribe function. Invalid payloads are dropped before the listener runs. */
+  readonly onCommand: (listener: (command: MenuCommand['command']) => void) => () => void;
+  /** Tells main whether the playlist has tracks. Resolves `false` on any failure. */
+  readonly reportPlaylistState: (state: { readonly hasTracks: boolean }) => Promise<boolean>;
+}
+
+const NOOP = (): void => undefined;
+
+export function createMenuClient(host: BridgeHost): MenuClient {
+  const menu = (): Readonly<Record<string, unknown>> | undefined => {
+    const bridge = host.necroamp;
+    if (!isRecord(bridge)) {
+      return undefined;
+    }
+    const value = bridge['menu'];
+    return isRecord(value) ? value : undefined;
+  };
+  return {
+    onCommand: (listener) => {
+      const namespace = menu();
+      if (namespace === undefined || typeof namespace['onCommand'] !== 'function') {
+        return NOOP;
+      }
+      const unsubscribe = (namespace['onCommand'] as (cb: (payload: unknown) => void) => unknown)(
+        (payload) => {
+          const parsed = menuCommandSchema.safeParse(payload);
+          if (parsed.success) {
+            listener(parsed.data.command);
+          }
+        },
+      );
+      return typeof unsubscribe === 'function' ? (unsubscribe as () => void) : NOOP;
+    },
+    reportPlaylistState: async (state) => {
+      const namespace = menu();
+      if (namespace === undefined || typeof namespace['reportPlaylistState'] !== 'function') {
+        return false;
+      }
+      try {
+        const raw = await (namespace['reportPlaylistState'] as (s: unknown) => Promise<unknown>)({
+          hasTracks: state.hasTracks,
+        });
+        const parsed = menuReportStateResponseSchema.safeParse(raw);
+        return parsed.success && parsed.data.ok;
+      } catch {
+        return false;
+      }
     },
   };
 }

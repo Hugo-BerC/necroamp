@@ -97,4 +97,42 @@ Packaged-build fuses and ASAR integrity, runtime behavior of the dev CSP hook, `
 - Full renderer tree and test code, other than the grep checks above.
 - Runtime fuzzing of `music-metadata` with malformed files.
 
+## Update: native menu, Open Folder and menu IPC (PR #7, third pass)
+
+Verdict: **APPROVED**. No Critical, High or Medium findings. No change is required before merge review.
+
+Method: I have no shell, so I could not run `git status` or `git diff`. I read the new and changed files directly (VERIFIED in code): `src/shared/ipc/menu.ts`, `library.ts`, `channels.ts`, `src/main/ipc/folder-handlers.ts`, `menu-handlers.ts`, `install-ipc.ts`, `src/main/library/folder-scan.ts`, `src/main/lifecycle/app-menu.ts`, `src/main/index.ts` (menu wiring), `src/preload/index.ts`, `create-necroamp-api.ts`, `src/main/security/csp.ts`, `window-options.ts` and the scheme registration. Tests were not run by me. `.worktrees/` was not touched. Not reviewed: the renderer menu subscription in `src/renderer` beyond a grep, the `folder-handlers` and `folder-scan` tests, and the behavior of a Windows junction at run time (see AE-10).
+
+### Checklist
+
+| Item | Result |
+|---|---|
+| `library:open-folder` sender and Zod checks | Registered through `registerHandler` with `isTrustedSender` (via `senderCheck`), a strict empty-tuple request schema and `openFolderResponseSchema` on the response. PASS |
+| `menu:report-state` sender and Zod checks | Same `registerHandler` path. Request is `z.tuple([z.strictObject({ hasTracks: z.boolean() })])`. The only effect is to enable or disable one menu item. PASS |
+| `menu:command` (main to renderer) | Payload is `{ command }` with an enum of three names. Preload re-validates with `menuCommandSchema` and drops invalid payloads, then hands the listener a fresh object. PASS |
+| No raw `ipcRenderer` or generic sender | `ipcRenderer` stays inside `src/preload/index.ts`. `invoke` is allow-listed to `IPC_CHANNELS`. `subscribe` is allow-listed to `IPC_EVENT_CHANNELS` and drops the Electron event, so the listener cannot reach `sender`. Bridge is `Object.freeze` at every level, including `menu`. PASS |
+| Folder scan: depth bound | `maxDepth` 8 and `maxEntries` 50,000 in `FOLDER_SCAN_LIMITS`. Exceeding either sets `truncated`. PASS |
+| Folder scan: count bound | `maxFiles` is `MAX_TRACKS_PER_REQUEST`. The response schema also has `.max(MAX_TRACKS_PER_REQUEST)`. A full media registry sets `truncated`. `truncated` is set only when one more file exists. PASS |
+| Symlink and junction escape | Entries where `isSymbolicLink()` is true are skipped, and each sub-directory's `realpath` must stay inside the real root. Node reports Windows junctions as links, so they are skipped (DOCUMENTED in the code comment, see AE-10). PASS with note |
+| Extension allow-list | `audioTypeFor(extname)` from the media handler, the same list the protocol serves. Playback is re-checked on `realpath` at serve time. PASS |
+| No paths to the renderer | The handler returns `TrackInfo` (token URL, file name, metadata) and two booleans. Absolute paths stay in `scan.files`. PASS |
+| Error handling | Dialog and scan failures log fixed keys (`library.dialog_failed`, `library.folder_scan_failed`) and return `createIpcError('INTERNAL')`. The caught error is dropped. The preload also replaces transport errors with fixed codes. Unreadable sub-directories are skipped silently. PASS |
+| Menu actions | Main only forwards a command name. `Open Files` and `Open Folder` run the existing dialog handlers, so no new privileged action exists. `Clear Playlist` is a renderer-side state change followed by `playlist:save`. View menu (reload, DevTools) exists only when `isDevRun`. PASS |
+| `contextIsolation`, `sandbox`, `webSecurity`, `nodeIntegration` | `buildWebPreferences` is unchanged: true, true, true, false, plus `webviewTag: false`. PASS |
+| CSP | Production directives unchanged: `default-src 'none'`, `script-src 'self'`, `connect-src 'none'`, `img-src 'self' media://art`, `media-src media://track`, `worker-src 'none'`. The `unsafe-inline` entries are in the dev-only builder. PASS |
+| Scheme privileges | `app`: `standard`, `secure`, `supportFetchAPI`. `media`: adds `stream` and `corsEnabled`. No `bypassCSP`. One registration call. Unchanged since the second pass (AE-08). PASS |
+
+### New findings
+
+| ID | Severity | Location | Evidence | Fix | Owner | Disposition |
+|---|---|---|---|---|---|---|
+| AE-09 | Info | `src/main/ipc/folder-handlers.ts` (loop over `scan.files`), `src/main/library/metadata.ts` | Open Folder makes AE-01 easier to reach. One click can queue up to 5000 files for sequential `parseFile` with `duration: true` and `skipCovers: false`, with no timeout or size cap, and the reply waits for all of them. The user chooses the folder, and the impact is availability only. | Same fix as AE-01: per-file timeout, size cap for duration scans, or batching. Consider a lower folder-scan cap than 5000 if scans feel slow. | desktop-engineer | Accepted. Folded into AE-01. |
+| AE-10 | Info | `src/main/library/folder-scan.ts` | The `realpath` containment check runs once per sub-directory, before `readdir` of it. A directory swapped for a junction after the check and before the read is a small race. The files found are still audio-extension regular files, and serving re-resolves with `realpath`. The "junctions are reported as links" behavior rests on Node semantics and the code comment, and I could not run it. | If a Windows test with a real junction does not exist, add one (QA). Optionally also check the `realpath` of each file against the root. | qa-engineer | Accepted. Needs a Windows junction test for full VERIFIED status. |
+
+AE-01 to AE-08 are unchanged and keep their earlier dispositions. AE-02 now also applies to a folder whose files are all re-authorized by `playlist:load`: no change in risk.
+
+### Required changes
+
+None.
+
 No source modified.

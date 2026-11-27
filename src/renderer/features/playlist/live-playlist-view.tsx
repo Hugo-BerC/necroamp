@@ -42,6 +42,11 @@ export function LivePlaylistView({ playlist }: { readonly playlist: LivePlaylist
             onActivate={playlist.addFiles}
           />
           <ControlButton
+            label={STRINGS.playlist.addFolder}
+            part="playlist-add-folder"
+            onActivate={playlist.addFolder}
+          />
+          <ControlButton
             label={STRINGS.playlist.clear}
             part="playlist-clear"
             unavailable={playlist.rows.length === 0}

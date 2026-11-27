@@ -122,6 +122,13 @@ Prerequisites: Node 24 and pnpm 10, then `pnpm install --frozen-lockfile`. Use y
    - Pick several presets.
    - The EQ resets to Flat after a restart; this is a known limitation.
 9. Visualizer: during playback the spectrum and waveform should move with the music. They should stop when paused or when the window is minimized.
-10. Corrupt file check: copy any non-audio file and rename it `broken.mp3`, then add it. The app should show an error for that track, not crash, and skip it during automatic progression.
+10. Native File menu (macOS: use Cmd instead of Ctrl; Exit is Quit in the app menu and on Linux):
+    - Open the **File** menu. It should list **Open Files...** (Ctrl+O), **Open Folder...** (Ctrl+Shift+O), **Clear Playlist** and **Exit**.
+    - Press Ctrl+O (or choose **Open Files...**) and add some tracks. They should be appended like the in-app Open button.
+    - Press Ctrl+Shift+O (or choose **Open Folder...**) and pick a folder with audio files in subfolders. Supported files (MP3, WAV, FLAC, OGG) should be added in natural name order. Cancelling the dialog should change nothing. A folder with no supported audio should show an empty-folder message.
+    - With an empty playlist, **Clear Playlist** should be disabled. After adding tracks it should be enabled.
+    - Choose **Clear Playlist**. Playback should stop and the playlist should empty. Restart the app and check it stays empty. The item should be disabled again.
+    - Choose **Exit**. The app should quit.
+11. Corrupt file check: copy any non-audio file and rename it `broken.mp3`, then add it. The app should show an error for that track, not crash, and skip it during automatic progression.
 
 Report what you heard and saw on the PR. Those observations are the input for gates H.2 and H.3.

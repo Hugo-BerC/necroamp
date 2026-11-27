@@ -315,14 +315,18 @@ test.describe('media:// boundaries in the real renderer', () => {
         top: Object.keys(bridge).sort(),
         libraryKeys: Object.keys(bridge['library'] ?? {}).sort(),
         playlistKeys: Object.keys(bridge['playlist'] ?? {}).sort(),
-        frozen: [bridge['library'], bridge['playlist']].map((o) => Object.isFrozen(o)),
+        menuKeys: Object.keys(bridge['menu'] ?? {}).sort(),
+        frozen: [bridge['library'], bridge['playlist'], bridge['menu']].map((o) =>
+          Object.isFrozen(o),
+        ),
       };
     });
     expect(shape).toEqual({
-      top: ['app', 'library', 'playlist'],
-      libraryKeys: ['openFiles', 'resolveTrack'],
+      top: ['app', 'library', 'menu', 'playlist'],
+      libraryKeys: ['openFiles', 'openFolder', 'resolveTrack'],
       playlistKeys: ['load', 'save'],
-      frozen: [true, true],
+      menuKeys: ['onCommand', 'reportPlaylistState'],
+      frozen: [true, true, true],
     });
   });
   test('closing the app releases the media element (no leftover audio on dispose)', async ({

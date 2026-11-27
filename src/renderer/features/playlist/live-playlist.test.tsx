@@ -218,4 +218,37 @@ describe('live playlist region', () => {
     );
     expect(screen.getByText(STRINGS.playlist.loading)).toBeInTheDocument();
   });
+
+  it('adds a folder through the Add folder button and shows the truncation notice', async () => {
+    const port: PlaylistPlayerPort = {
+      playTrack: vi.fn(() => Promise.resolve()),
+      stop: vi.fn(),
+      restart: vi.fn(),
+      positionSec: () => 0,
+      subscribe: () => () => undefined,
+    };
+    const store = createPlaylistStore(
+      port,
+      {
+        openFiles: () => Promise.resolve({ ok: true, data: { tracks: [] } }),
+        openFolder: () =>
+          Promise.resolve({
+            ok: true,
+            data: { tracks: [track(1)], canceled: false, truncated: true },
+          }),
+      },
+      {
+        load: () => Promise.resolve({ ok: true, items: [] }),
+        save: () => Promise.resolve({ ok: true }),
+      },
+    );
+    render(
+      <PlaylistStoreProvider store={store}>
+        <PlaylistRegion />
+      </PlaylistStoreProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: STRINGS.playlist.addFolder }));
+    expect(rows().getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText(STRINGS.playlist.notices['folder-truncated'])).toBeInTheDocument();
+  });
 });

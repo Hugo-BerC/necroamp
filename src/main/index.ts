@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { parseFile } from 'music-metadata';
+import { IPC_EVENT_CHANNELS } from '@shared/ipc';
 import { BrowserWindow, Menu, app, dialog, ipcMain, protocol, session } from 'electron';
 import { APP_NAME, PRELOAD_PATH_SEGMENTS, RENDERER_ROOT_SEGMENTS } from './constants';
 import { installIpcHandlers } from './ipc/install-ipc';
@@ -10,7 +11,7 @@ import {
   attachRendererCrashHandler,
   installProcessCrashHandlers,
 } from './lifecycle/crash-handlers';
-import { installAppMenu } from './lifecycle/app-menu';
+import { installAppMenu, type AppMenuController } from './lifecycle/app-menu';
 import {
   shouldCreateWindowOnActivate,
   shouldQuitOnAllWindowsClosed,
@@ -64,6 +65,7 @@ const rendererRoot = path.join(app.getAppPath(), ...RENDERER_ROOT_SEGMENTS);
 
 let mainWindow: BrowserWindow | null = null;
 const disposers: (() => void)[] = [];
+let appMenu: AppMenuController | null = null;
 const mediaRegistry = createMediaRegistry();
 const artworkStore = createArtworkStore();
 
@@ -82,6 +84,7 @@ function openMainWindow(): void {
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
     mediaRegistry.clear();
+    appMenu?.setClearPlaylistEnabled(false);
     artworkStore.clear();
   });
 }
@@ -153,6 +156,14 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
             : dialog.showOpenDialog(mainWindow, options as Electron.OpenDialogOptions),
         fs,
         path,
+        folder: {
+          fs: {
+            readdir: (p) => fs.readdir(p, { withFileTypes: true }),
+            realpath: (p) => fs.realpath(p),
+          },
+          path,
+        },
+        setClearPlaylistEnabled: (enabled) => appMenu?.setClearPlaylistEnabled(enabled),
         registry: mediaRegistry,
         metadata: createMetadataReader({ parseFile, log }),
         artwork: artworkStore,
@@ -168,7 +179,18 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         }),
       }),
     );
-    installAppMenu(Menu, { platform: process.platform, isDevRun });
+    appMenu = installAppMenu(Menu, {
+      platform: process.platform,
+      isDevRun,
+      onCommand: (command) => {
+        const window = mainWindow;
+        if (window === null || window.isDestroyed()) return;
+        if (window.isMinimized()) window.restore();
+        window.focus();
+        // Payload is a command name only. The preload validates it again.
+        window.webContents.send(IPC_EVENT_CHANNELS.menuCommand, { command });
+      },
+    });
     openMainWindow();
   });
 }

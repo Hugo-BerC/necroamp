@@ -6,6 +6,13 @@ describe('shared IPC public surface', () => {
     expect(Object.keys(contract).sort()).toEqual(
       [
         'IPC_CHANNELS',
+        'IPC_EVENT_CHANNELS',
+        'MENU_COMMANDS',
+        'menuCommandSchema',
+        'menuReportStateRequestSchema',
+        'menuReportStateResponseSchema',
+        'openFolderRequestSchema',
+        'openFolderResponseSchema',
         'IPC_ERROR_MESSAGES',
         'MAX_TRACKS_PER_REQUEST',
         'PLAYLIST_SCHEMA_VERSION',

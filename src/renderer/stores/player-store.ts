@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand';
-import type { OpenFilesResponse, TrackInfo } from '@shared/ipc';
+import type { OpenFilesResponse, OpenFolderResponse, TrackInfo } from '@shared/ipc';
 import {
   INITIAL_PLAYBACK_STATE,
   reducePlayback,
@@ -14,9 +14,15 @@ export type LibraryClientResult =
   | { readonly ok: true; readonly data: Extract<OpenFilesResponse, { ok: true }>['data'] }
   | { readonly ok: false; readonly reason: OpenFilesFailureReason };
 
+export type OpenFolderClientResult =
+  | { readonly ok: true; readonly data: Extract<OpenFolderResponse, { ok: true }>['data'] }
+  | { readonly ok: false; readonly reason: OpenFilesFailureReason };
+
 /** What the store needs from the bridge adapter. Tests pass a fake. */
 export interface LibraryClient {
   readonly openFiles: (request: { readonly multiple: boolean }) => Promise<LibraryClientResult>;
+  /** Absent when the host has no folder support; the playlist then reports `unavailable`. */
+  readonly openFolder?: () => Promise<OpenFolderClientResult>;
 }
 
 /** How the last track finished. `seq` increases on every outcome so observers can detect repeats. */

@@ -1,4 +1,18 @@
-export { IPC_CHANNELS, type IpcChannel } from './channels';
+export {
+  IPC_CHANNELS,
+  IPC_EVENT_CHANNELS,
+  type IpcChannel,
+  type IpcEventChannel,
+} from './channels';
+export {
+  MENU_COMMANDS,
+  menuCommandSchema,
+  menuReportStateRequestSchema,
+  menuReportStateResponseSchema,
+  type MenuCommand,
+  type MenuReportStateRequest,
+  type MenuReportStateResponse,
+} from './menu';
 export {
   IPC_ERROR_MESSAGES,
   createIpcError,
@@ -25,12 +39,16 @@ export {
   artworkUrlSchema,
   openFilesRequestSchema,
   openFilesResponseSchema,
+  openFolderRequestSchema,
+  openFolderResponseSchema,
   resolveTrackRequestSchema,
   resolveTrackResponseSchema,
   trackInfoSchema,
   trackMediaUrlSchema,
   type OpenFilesRequest,
   type OpenFilesResponse,
+  type OpenFolderRequest,
+  type OpenFolderResponse,
   type ResolveTrackRequest,
   type ResolveTrackResponse,
   type TrackInfo,

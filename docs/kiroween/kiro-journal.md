@@ -296,3 +296,9 @@ Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check
 - Added a real Ogg Vorbis fixture and a real-AudioContext equalizer e2e (qa-engineer). The generator dependency wasm-media-encoders 0.7.0 is dev-only and not shipped (docs/engineering/audio-engine-dependency-review.md).
 - Final security review: APPROVED_WITH_LIMITATIONS, no Medium or higher (docs/security/audio-engine-review.md). ADR 0006 reconciled with the implemented CSP and protocol; Spec as-built record in .kiro/specs/audio-engine/as-built.md.
 - Orchestration note: step agents cannot commit, push or write .agents/ or *.property.test.ts, so the orchestrator performed those. Human gates H.1 to H.4 remain open; no human listening has occurred.
+
+### 17.2 Native File menu integration (PR #7)
+- What: the native File menu now has Open Files (Ctrl/Cmd+O), Open Folder (Ctrl/Cmd+Shift+O), Clear Playlist and Exit (Quit on macOS). Prompted by manual testing, where the menu only had Exit.
+- Feature: Audio Engine. Menu clicks go to the renderer on a typed `menu:command` push channel. The renderer reports whether the playlist has tracks on `menu:report-state`, so Clear Playlist is disabled when empty. Open Folder is a new `library:open-folder` handler that scans in main (depth, entry and track limits, symlinks skipped) and issues media tokens, so no paths reach the renderer.
+- Changed: shared IPC schemas, main menu, folder scan and handlers, preload API, and tests for each. Existing security settings are unchanged.
+- Agents: desktop-engineer (main, preload, shared IPC), qa-engineer (integration test updates), with the orchestrator handling integration, commits and push.

@@ -4,9 +4,11 @@ import { AppShell } from '@renderer/app/app-shell';
 import { createDomAudioEngine } from '@renderer/audio';
 import {
   createLibraryClient,
+  createMenuClient,
   createNecroampClient,
   createPlaylistClient,
 } from '@renderer/app/bridge/necroamp-client';
+import { connectNativeMenu } from '@renderer/app/bridge/native-menu';
 import { createAppInfoStore } from '@renderer/stores/app-info-store';
 import { createEqStore } from '@renderer/stores/eq-store';
 import { createPlayerPort } from '@renderer/stores/player-port';
@@ -33,9 +35,12 @@ const playlistStore = createPlaylistStore(
   libraryClient,
   createPlaylistClient(window),
 );
+// Subscribe once for the app lifetime; the disposer runs on pagehide.
+const disconnectMenu = connectNativeMenu(createMenuClient(window), playlistStore);
 void playlistStore.getState().load();
 // Release the media element and listeners when the window goes away.
 window.addEventListener('pagehide', () => {
+  disconnectMenu();
   void playlistStore.getState().flush();
   playlistStore.getState().dispose();
   playerStore.getState().dispose();

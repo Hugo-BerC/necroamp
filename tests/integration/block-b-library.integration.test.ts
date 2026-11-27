@@ -681,7 +681,7 @@ describe('IPC security of library:resolve-track and playlist:*', () => {
 
   it('the preload bridge exposes exactly the new methods and no path-taking variant', () => {
     const { api } = stack();
-    expect(Object.keys(api.library).sort()).toEqual(['openFiles', 'resolveTrack']);
+    expect(Object.keys(api.library).sort()).toEqual(['openFiles', 'openFolder', 'resolveTrack']);
     expect(Object.keys(api.playlist).sort()).toEqual(['load', 'save']);
     expect(Object.isFrozen(api.playlist)).toBe(true);
     expect(Object.isFrozen(api.library)).toBe(true);

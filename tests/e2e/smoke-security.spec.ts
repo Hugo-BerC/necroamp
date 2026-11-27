@@ -129,7 +129,7 @@ test.describe('sandboxed preload and live web preferences', () => {
     });
   });
 
-  test('exposes exactly the frozen typed bridge (app, library, playlist) and nothing else', async ({
+  test('exposes exactly the frozen typed bridge (app, library, playlist, menu) and nothing else', async ({
     page,
   }) => {
     const shape = await page.evaluate(() => {
@@ -142,13 +142,14 @@ test.describe('sandboxed preload and live web preferences', () => {
           Object.isFrozen(bridge) &&
           Object.isFrozen(app) &&
           Object.isFrozen(bridge['library']) &&
-          Object.isFrozen(bridge['playlist']),
+          Object.isFrozen(bridge['playlist']) &&
+          Object.isFrozen(bridge['menu']),
         getInfoType: typeof app['getInfo'],
         rawIpc: Object.keys(window).filter((k) => /ipc|invoke|send/i.test(k)),
       };
     });
     expect(shape).toEqual({
-      keys: ['app', 'library', 'playlist'],
+      keys: ['app', 'library', 'playlist', 'menu'],
       appKeys: ['getInfo'],
       frozen: true,
       getInfoType: 'function',

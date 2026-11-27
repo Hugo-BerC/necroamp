@@ -27,6 +27,7 @@ export interface LivePlaylist {
   readonly repeatLabel: string;
   readonly noticeText: string;
   readonly addFiles: () => void;
+  readonly addFolder: () => void;
   readonly clear: () => void;
   readonly toggleShuffle: () => void;
   readonly cycleRepeat: () => void;
@@ -81,6 +82,9 @@ export function useLivePlaylist(store: PlaylistStore): LivePlaylist {
       noticeText: noticeToText(notice),
       addFiles: () => {
         void actions.addFiles();
+      },
+      addFolder: () => {
+        void actions.addFolder();
       },
       clear: actions.clear,
       toggleShuffle: actions.toggleShuffle,

@@ -18,8 +18,8 @@ import { registerHandler, type IpcMainLike } from './register-handler';
 
 export interface OpenDialogOptions {
   readonly title: string;
-  readonly properties: readonly ('openFile' | 'multiSelections')[];
-  readonly filters: readonly { name: string; extensions: readonly string[] }[];
+  readonly properties: readonly ('openFile' | 'multiSelections' | 'openDirectory')[];
+  readonly filters?: readonly { name: string; extensions: readonly string[] }[];
 }
 
 export interface LibraryHandlerDeps {
