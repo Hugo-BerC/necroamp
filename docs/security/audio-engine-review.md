@@ -136,3 +136,70 @@ AE-01 to AE-08 are unchanged and keep their earlier dispositions. AE-02 now also
 None.
 
 No source modified.
+
+## Pre-merge verification: selectedPath persistence (PR #7, HEAD d516392)
+
+Date: not available to me (no shell or clock). The pass is identified by branch `feature/audio-engine` at HEAD d516392. Earlier sections are unchanged.
+
+Verdict: **APPROVED_WITH_LIMITATIONS**. No Critical, High or Medium findings. AE-02 is **STILL OPEN** (Low). A small optional fix is given below. I read the code and tests directly (VERIFIED). I have no shell, so I did not run tests, the app or `pnpm audit`. `.worktrees/` was not touched.
+
+Files read: `src/main/library/playlist-persistence.ts`, `src/main/ipc/playlist-handlers.ts`, `src/main/library/track-info.ts`, `src/shared/ipc/selected-track.ts`, `src/shared/ipc/playlist-store.ts`, `src/preload/create-necroamp-api.ts`, `src/renderer/stores/playlist-store.ts` and `src/renderer/app/bridge/necroamp-client.ts` (by search hits), and the tests `playlist-persistence.test.ts` and `playlist-handlers.test.ts`. I did not re-read `register-handler.ts` or `sender-validation.ts` in this pass.
+
+### Checks
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1a | Renderer sees only tokens | PASS | `playlistSaveRequestSchema` carries `trackId` (`z.uuid()`) and `selectedTrackId` (`z.uuid().nullable()`), both `z.strictObject`. The load response carries `TrackInfo` (token URL, file name) and a token `selectedTrackId`. The preload rebuilds the save payload from parsed values (`create-necroamp-api.ts`, `playlistSave`). Test `rejects a path as selectedTrackId` sends `C:\\x.mp3` and gets `INVALID_PAYLOAD`, and `persistence.save` is not called. The load test asserts the JSON reply does not contain the directory part. |
+| 1b | Save-side path validation | PASS | Save never accepts a path. Tokens map through `registry.resolve`. Unknown tokens are dropped. The paths written are only those the registry issued from the dialog, folder scan or load. |
+| 1c | Load-side validation of `items` and `selectedPath` | PARTIAL | Checked: string, length 1 to 4096 (strict Zod), audio extension (`audioTypeFor` in `fromPath`), file count cap. **Not checked anywhere:** relative paths, UNC (`\\\\host\\share`, `//host/share`), `\\\\?\\` and `\\\\.\\` device paths, traversal segments, NUL. No `isAbsolute`, UNC or NUL test exists in `src/main` or in the tests. |
+| 1d | Per-case behavior of a planted entry with an audio extension | see table below | Derived from `fromPath`: extension check, then `fs.stat`, then (if it is a file) `metadata(filePath)`, then `registry.issue`. |
+| 2 | UNC rejected on `playlist:load` | **No** | AE-02 STILL OPEN. |
+| 3 | Stale selection | PASS | `savedSelection` is set only inside the loop over items that `fromPath` accepted and only when `filePath === selectedPath`. A `selectedPath` that is not in `items` never gets a token. `resolveSelectedTrackId` falls back to the first item, or to none for an empty list. Handler tests cover null, a removed file and a `.txt` selection (all resolve to the first track). The renderer re-resolves with `resolveSelectedTrackId` and falls back to the first available item (`playlist-store.ts` near line 427). On save, a selection token whose path is not in the saved items is written as null (`paths.includes(selectedPath)`). An unknown token also gives null (test `selectedTrackId: UNKNOWN`). |
+| 4 | Backward compatibility and corruption | PASS | `selectedPath` is optional, so a version-1 file without it loads (test `loads an older file without a selection`). The schema is `z.strictObject` with a literal `schemaVersion`. Unknown fields, an empty `selectedPath`, bad JSON or a wrong version give an empty state, and only the code (`JSON`, `SCHEMA`, read errno) is logged. Writes are temp file then rename, serialized, with temp cleanup on failure. A null selection omits the key. Note: a corrupt file silently empties the playlist, and the next save overwrites it. That is an availability choice, not a security issue. |
+| 5 | Sender and Zod validation of `playlist:save` | PASS (see note) | Both handlers go through `registerHandler` with `isTrustedSender`, request schema and response schema. Handler tests include a `trusted` switch. The preload parses the request before invoke and the response after. `selectedTrackId` is validated as a UUID or null at the preload and again in main. Note: sender logic itself was verified in the earlier pass and not re-read now. |
+
+### What a planted playlist entry does today (check 1d)
+
+Assume the attacker can write `userData/playlist.json` and the entry ends in `.mp3`.
+
+| Entry | Result on startup |
+|---|---|
+| `\\\\host\\share\\x.mp3` or `//host/share/x.mp3` (Windows) | `fs.stat` runs on it. Windows opens an SMB connection to `host`, which can send NTLM credentials. If the share answers and the entry is a regular file, `parseFile` then reads it over the network. Either way a token is issued (`allowMissing: true`), so even an unreachable host gives a listed, unavailable item. Startup also waits on the network timeout, once per entry. **Network is touched.** |
+| `\\\\?\\C:\\x.mp3`, `\\\\?\\UNC\\host\\share\\x.mp3` | Same as above for the UNC form. The local form reads a local file. |
+| `\\\\.\\pipe\\x.mp3` or other `\\\\.\\` device paths | `fs.stat` opens a device or pipe name. I could not run it, so side effects are ASSUMED possible, not shown. |
+| Relative path (`..\\..\\x.mp3`, `x.mp3`) | Resolved against the process working directory. Authorized if it is a regular audio file. |
+| Traversal segments in an absolute path | Not blocked. They are not an escape on their own, because any absolute audio path is accepted anyway. |
+| NUL inside the path | Node throws on `stat`, `available` becomes false, and `allowMissing` still issues a token for an unavailable item. The media handler would not serve it. Harmless, but it is junk in the list. |
+| Non-audio extension | Rejected (`audioTypeFor`), no token, no `stat`. PASS |
+| Over 4096 characters | Whole file rejected by the schema (empty playlist). PASS |
+
+The planted `selectedPath` alone never issues a token or touches the filesystem. Only `items` are processed.
+
+### AE-02 status: STILL OPEN
+
+Location: `src/main/ipc/playlist-handlers.ts`, load handler (loop calling `tracks.fromPath(filePath, { allowMissing: true })`) and `src/main/library/track-info.ts` `fromPath`. `playlist-persistence.ts` validates length only. The selectedPath work added no path-shape check, so nothing in this change resolves or worsens AE-02. Severity stays Low: the attacker needs write access to the user profile.
+
+| ID | Severity | Location | Evidence | Fix | Owner |
+|---|---|---|---|---|---|
+| AE-02 | Low | `playlist-handlers.ts` load loop; `track-info.ts` `fromPath` | See table above. A planted UNC item makes `stat` (and possibly metadata parsing) contact a remote host at startup. | Minimal change below. | desktop-engineer |
+
+### Minimal fix for desktop-engineer (optional before merge, recommended)
+
+- File: `src/main/ipc/playlist-handlers.ts`, `playlist:load` handler. Optionally also filter inside `createPlaylistPersistence.loadState`.
+- Behavior: before calling `tracks.fromPath` for a persisted path, skip the entry (no `stat`, no token) when any of these is true: it contains a NUL (`\\0`); it is not absolute for the platform (`path.isAbsolute` is false); on Windows, it starts with two path separators (`/^[\\\\/]{2}/`), which covers `\\\\host`, `//host`, `\\\\?\\` and `\\\\.\\`. Put the check in one pure helper (for example `isSafePersistedPath(path)` in `src/main/library/`), so it can have a property test.
+- Do not put the check in `fromPath`: the open dialog and folder scan share it, and a user may legitimately pick a file on a network share. Consequence to document: a track from a network share chosen in the dialog is not restored after restart.
+- Tests: handler test with `\\\\host\\share\\a.mp3`, `//host/share/a.mp3`, `\\\\?\\C:\\a.mp3`, `\\\\.\\pipe\\a.mp3`, a relative path and a NUL path. Assert `fs.stat` and `metadata` are never called for them and the response has no item for them.
+- If the team prefers to accept the risk instead, record it in `docs/security/threat-model.md` as the earlier second-pass note already requires.
+
+### Other items from the request that I can only record
+
+- `pnpm audit`: **not run by me** (no shell). No result is claimed. AE-05 stays open until someone runs it and attaches the output.
+- Intermittent E2E failure: recorded as an **unresolved flaky test, cause unidentified**. I have no evidence linking it to the earlier Electron frame disposal issue, and I do not claim that link.
+- Human confirmation that audio is audible and the equalizer works: recorded as reported by the user. Not verified by me.
+- Acceptance of the latest playlist behavior (auto-select first track, no autoplay, double-click play, restore selection): **pending manual testing**. Not accepted here.
+
+### Merge readiness of this change
+
+APPROVED_WITH_LIMITATIONS. The selectedPath persistence adds no new privilege: it cannot grant access to a path outside the saved item list, the renderer handles tokens only, and old files load. The remaining limitation is AE-02 (unchanged, Low). Merging into `main` still needs explicit human authorization for PR #7.
+
+No source modified.

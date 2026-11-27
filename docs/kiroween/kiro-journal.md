@@ -306,3 +306,7 @@ Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check
 ### 17.2 Auto-select first track and restore selection
 - Defect from manual acceptance testing: import into an empty playlist left the player on 'No track loaded'. Fixed across persistence (desktop-engineer), stores (frontend-engineer) and tests (qa-engineer). First QA gate returned CHANGES_REQUESTED (D1 to D3); targeted fixes were delegated per owner and the orchestrator reran the full gates.
 
+
+### 17.3 Pre-merge verification
+- Security review of selectedPath persistence: APPROVED_WITH_LIMITATIONS; AE-02 still open (Low). pnpm audit clean. One unidentified intermittent e2e failure recorded as unresolved flaky. Maintainer reported audible playback and working equalization; playlist behavior acceptance pending. No human gate closed by an agent.
+

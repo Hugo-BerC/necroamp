@@ -91,7 +91,7 @@ Playwright drives the production build in Electron with synthetic, script-genera
 - **AE-02 (Low).** `playlist:load` issues tokens for any audio-extension path in `playlist.json`, including Windows UNC paths. Exploiting this requires write access to the user profile.
 - **AE-03 (Low).** The media handler reads the size with `stat` and opens the stream afterwards. A file that changes in between gets a mismatched `Content-Length`.
 - **AE-04 (Info).** `media://` applies to the whole default session, and tokens live until the window closes. The Skin Engine must not load untrusted web content in this session.
-- **AE-05 (Info).** Licenses are checked (all MIT, see above). Advisories are not: `pnpm audit` was not run.
+- **AE-05 (Info).** Licenses are checked (all MIT, see above). `pnpm audit` and `pnpm audit --prod` at HEAD d516392 both exit 0 with "No known vulnerabilities found" (advisory data as of the run).
 - **EQ settings are not persisted (spec C4).** No `settings:*` IPC channel exists, so the equalizer resets to Flat on restart.
 - **Ogg Vorbis is verified on Windows only.** A real Ogg Vorbis fixture (libvorbis via the dev-only `wasm-media-encoders` 0.7.0, MIT) decodes in Chromium as a 440 Hz tone and plays with advancing `currentTime`. Ogg Opus is not covered, and macOS and Linux decoders are untested.
 - **Tag text (AE-06, Info).** After the D-B1 fix, a few cosmetic characters (U+2028, U+2029, U+061C, the Unicode tag block) still pass `cleanText`. Tags render as text, never HTML.
@@ -139,3 +139,10 @@ Report what you heard and saw on the PR. Those observations are the input for ga
 - The selected track is stored as an optional \selectedPath\ in \playlist.json\ (still version 1; older files load) and restored on restart without autoplay. A stale selection falls back to the first track.
 - Manual check: import tracks, confirm Play is enabled and nothing plays; double-click a track; add more files; restart and confirm the same track is loaded and paused.
 
+## Pre-merge verification (PR #7, HEAD d516392)
+- **Security (selectedPath persistence):** APPROVED_WITH_LIMITATIONS, no Critical, High or Medium. The renderer only handles opaque tokens. A stale or unknown selection falls back to the first track and cannot authorize a path outside the saved item list. Version-1 files without selectedPath load, and the schema is strict. See "Pre-merge verification" in docs/security/audio-engine-review.md.
+- **AE-02 is STILL OPEN (Low), unchanged by this PR.** playlist:load does not reject UNC, device (\\\\?\\, \\\\.\\) or relative paths in playlist.json items. A planted entry that ends in an audio extension makes s.stat touch the network on Windows. The attacker needs write access to the user's profile. A proposed fix (reject UNC, device and relative paths on load only) would also drop legitimately chosen UNC files at the next start, so it is a behavior decision for the maintainer and is not applied.
+- **Dependency audit:** pnpm audit and pnpm audit --prod both report no known vulnerabilities.
+- **Unresolved flaky test:** one E2E run of the final code had 1 failed test out of 89. The failing test was not recorded, the next run passed 89/89, and the cause is unidentified. It is not attributed to the earlier "Render frame was disposed" error, because no evidence links them. Open until reproduced and diagnosed.
+- **Human confirmation (reported by the maintainer during manual acceptance testing):** audio playback is audible and equalization works correctly. This is a maintainer report, not an automated result. Gate H.2 (listening) is the maintainer's to close, and H.3 (visual check of spectrum, waveform and EQ) and H.1 and H.4 are still open.
+- **Acceptance pending:** the latest playlist behavior (auto-load of the first track, double-click to play, selection restore, File menu parity) is not yet manually accepted.
