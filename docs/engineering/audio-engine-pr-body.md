@@ -65,7 +65,7 @@ The Low and Info findings below are not fixed in this PR and are listed as limit
 | `pnpm typecheck` | exit 0 |
 | `pnpm lint` | exit 0 |
 | `pnpm format:check` | exit 0 |
-| `pnpm test:coverage` | exit 0. 117 files, 1579 passed, 0 expected fail, 8 skipped (1587 tests; all skips are conditional on symlink privilege). Coverage thresholds unchanged and met |
+| `pnpm test:coverage` | exit 0. 119 files, 1662 passed, 0 expected fail, 8 skipped (1670 tests; all skips are conditional on symlink privilege). Coverage thresholds unchanged and met |
 | Coverage | statements 99.3% (1993/2007), branches 96.13% (1143/1189), functions 99.16% (474/478), lines 99.5% (1824/1833). Thresholds unchanged. |
 | `pnpm build` | exit 0 |
 | `pnpm test:e2e` | exit 0. 89 passed on the final run (one earlier run of the same code had 1 failure that did not reproduce; cause not identified) |
@@ -88,7 +88,7 @@ Playwright drives the production build in Electron with synthetic, script-genera
 ## Limitations
 
 - **AE-01 (Low).** Metadata is parsed in main with no per-file timeout, size cap or concurrency bound, and covers are read in full before the 2 MiB check. A hostile or very large file can stall `library:open-files` or `playlist:load`.
-- **AE-02 (Low).** `playlist:load` issues tokens for any audio-extension path in `playlist.json`, including Windows UNC paths. Exploiting this requires write access to the user profile.
+- **AE-02 (Low), fixed by restriction.** `playlist:load` now accepts only valid local absolute file paths (`src/main/library/local-path.ts`). UNC, Windows device namespace, relative, drive-relative, control-character, empty, oversized and non-string entries are rejected before any `stat`, metadata parse or token issue. A rejected item is dropped silently and a rejected `selectedPath` is treated as a stale selection. **Limitation:** network-hosted tracks (for example UNC shares) are not restored automatically at startup. Full network library support is outside the MVP scope. The restriction applies only to restoration; the Open Files and Open Folder dialogs are unchanged. Security-reviewer confirmation is pending.
 - **AE-03 (Low).** The media handler reads the size with `stat` and opens the stream afterwards. A file that changes in between gets a mismatched `Content-Length`.
 - **AE-04 (Info).** `media://` applies to the whole default session, and tokens live until the window closes. The Skin Engine must not load untrusted web content in this session.
 - **AE-05 (Info).** Licenses are checked (all MIT, see above). `pnpm audit` and `pnpm audit --prod` at HEAD d516392 both exit 0 with "No known vulnerabilities found" (advisory data as of the run).
@@ -141,8 +141,10 @@ Report what you heard and saw on the PR. Those observations are the input for ga
 
 ## Pre-merge verification (PR #7, HEAD d516392)
 - **Security (selectedPath persistence):** APPROVED_WITH_LIMITATIONS, no Critical, High or Medium. The renderer only handles opaque tokens. A stale or unknown selection falls back to the first track and cannot authorize a path outside the saved item list. Version-1 files without selectedPath load, and the schema is strict. See "Pre-merge verification" in docs/security/audio-engine-review.md.
-- **AE-02 is STILL OPEN (Low), unchanged by this PR.** playlist:load does not reject UNC, device (\\\\?\\, \\\\.\\) or relative paths in playlist.json items. A planted entry that ends in an audio extension makes s.stat touch the network on Windows. The attacker needs write access to the user's profile. A proposed fix (reject UNC, device and relative paths on load only) would also drop legitimately chosen UNC files at the next start, so it is a behavior decision for the maintainer and is not applied.
+- **AE-02 status (superseded by the fix above): RESOLVED, confirmed by the focused security review (APPROVED_WITH_LIMITATIONS; residual Info items AE-11 mapped network drives and mounts look local, AE-12 reserved device names, AE-13 two unreachable test assertions).** Original finding: playlist:load does not reject UNC, device (\\\\?\\, \\\\.\\) or relative paths in playlist.json items. A planted entry that ends in an audio extension makes s.stat touch the network on Windows. The attacker needs write access to the user's profile. A proposed fix (reject UNC, device and relative paths on load only) would also drop legitimately chosen UNC files at the next start, so it is a behavior decision for the maintainer and is not applied.
 - **Dependency audit:** pnpm audit and pnpm audit --prod both report no known vulnerabilities.
 - **Unresolved flaky test:** one E2E run of the final code had 1 failed test out of 89. The failing test was not recorded, the next run passed 89/89, and the cause is unidentified. It is not attributed to the earlier "Render frame was disposed" error, because no evidence links them. Open until reproduced and diagnosed.
 - **Human confirmation (reported by the maintainer during manual acceptance testing):** audio playback is audible and equalization works correctly. This is a maintainer report, not an automated result. Gate H.2 (listening) is the maintainer's to close, and H.3 (visual check of spectrum, waveform and EQ) and H.1 and H.4 are still open.
 - **Acceptance pending:** the latest playlist behavior (auto-load of the first track, double-click to play, selection restore, File menu parity) is not yet manually accepted.
+- **Final validation after the AE-02 fix (HEAD plus fix):** typecheck, lint, format:check and build pass; coverage run 119 files, 1662 passed, 8 skipped; e2e 89 passed. The earlier unidentified flaky e2e failure remains unresolved.
+

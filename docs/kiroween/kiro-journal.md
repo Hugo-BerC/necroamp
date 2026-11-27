@@ -310,3 +310,7 @@ Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check
 ### 17.3 Pre-merge verification
 - Security review of selectedPath persistence: APPROVED_WITH_LIMITATIONS; AE-02 still open (Low). pnpm audit clean. One unidentified intermittent e2e failure recorded as unresolved flaky. Maintainer reported audible playback and working equalization; playlist behavior acceptance pending. No human gate closed by an agent.
 
+
+### 17.4 AE-02 resolution
+- Fixed by restricting persisted playlist restoration to valid local absolute paths (desktop-engineer); focused security review APPROVED_WITH_LIMITATIONS with AE-02 RESOLVED and Info items AE-11 to AE-13. Network-hosted tracks are not restored automatically (outside MVP).
+

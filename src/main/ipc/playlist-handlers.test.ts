@@ -12,6 +12,8 @@ type Listener = (event: SenderEventLike, ...args: unknown[]) => Promise<unknown>
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 const EVENT = { senderFrame: null, sender: {} } as unknown as SenderEventLike;
 const UNKNOWN = '00000000-0000-4000-8000-000000000000';
+/** Absolute on every host (drive-qualified on Windows), so restoration accepts it. */
+const MUSIC = path.resolve(path.sep, 'm');
 
 function setup(
   options: {
@@ -84,8 +86,8 @@ describe('playlist:load', () => {
     });
   });
   it('returns the saved selection as a token, never a path', async () => {
-    const a = path.join('m', 'a.mp3');
-    const b = path.join('m', 'b.mp3');
+    const a = path.join(MUSIC, 'a.mp3');
+    const b = path.join(MUSIC, 'b.mp3');
     const { invoke } = setup({ saved: [a, b], selectedPath: b });
     const result = (await invoke(IPC_CHANNELS.playlistLoad)) as {
       data: { items: { trackId: string }[]; selectedTrackId: string };
@@ -93,11 +95,11 @@ describe('playlist:load', () => {
     expect(result.data.selectedTrackId).toBe(result.data.items[1]?.trackId);
     expect(JSON.stringify(result)).not.toContain('m' + path.sep);
   });
-  it.each([null, path.join('m', 'removed.mp3'), path.join('m', 'x.txt')])(
+  it.each([null, path.join(MUSIC, 'removed.mp3'), path.join(MUSIC, 'x.txt')])(
     'resolves selection %s that matches no track to the first track',
     async (selectedPath) => {
-      const a = path.join('m', 'a.mp3');
-      const { invoke } = setup({ saved: [a, path.join('m', 'b.mp3')], selectedPath });
+      const a = path.join(MUSIC, 'a.mp3');
+      const { invoke } = setup({ saved: [a, path.join(MUSIC, 'b.mp3')], selectedPath });
       const result = (await invoke(IPC_CHANNELS.playlistLoad)) as {
         data: { items: { trackId: string }[]; selectedTrackId: string };
       };
@@ -106,10 +108,10 @@ describe('playlist:load', () => {
   );
 
   it('re-authorizes stored paths and marks missing files unavailable, keeping order', async () => {
-    const a = path.join('m', 'a.mp3');
-    const gone = path.join('m', 'gone.flac');
+    const a = path.join(MUSIC, 'a.mp3');
+    const gone = path.join(MUSIC, 'gone.flac');
     const { invoke, registry } = setup({
-      saved: [a, gone, path.join('m', 'x.txt')],
+      saved: [a, gone, path.join(MUSIC, 'x.txt')],
       missing: [gone],
     });
     const result = (await invoke(IPC_CHANNELS.playlistLoad)) as {
@@ -125,7 +127,10 @@ describe('playlist:load', () => {
   });
 
   it('stops when the registry is full', async () => {
-    const { invoke } = setup({ saved: ['/m/a.mp3', '/m/b.mp3'], limit: 1 });
+    const { invoke } = setup({
+      saved: [path.join(MUSIC, 'a.mp3'), path.join(MUSIC, 'b.mp3')],
+      limit: 1,
+    });
     const result = (await invoke(IPC_CHANNELS.playlistLoad)) as { data: { items: unknown[] } };
     expect(result.data.items).toHaveLength(1);
   });

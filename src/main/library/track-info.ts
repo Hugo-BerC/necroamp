@@ -4,6 +4,7 @@ import type { ArtworkStore } from './artwork';
 import type { MediaRegistry } from './media-registry';
 import type { MetadataReader } from './metadata';
 import { UNKNOWN_ARTIST } from './metadata';
+import { isLocalAbsolutePath, type PathPlatform } from './local-path';
 import { cleanText } from './text';
 
 export interface TrackFactoryDeps {
@@ -13,6 +14,8 @@ export interface TrackFactoryDeps {
   /** Absent in tests that only exercise authorization. Then only file-name info is returned. */
   readonly metadata?: MetadataReader;
   readonly artwork?: Pick<ArtworkStore, 'put'>;
+  /** Platform for localOnly checks. Defaults to the current platform. */
+  readonly platform?: PathPlatform;
 }
 
 export interface TrackFactory {
@@ -23,16 +26,19 @@ export interface TrackFactory {
    */
   fromPath(
     filePath: string,
-    options?: { readonly allowMissing?: boolean },
+    options?: { readonly allowMissing?: boolean; readonly localOnly?: boolean },
   ): Promise<TrackInfo | 'full' | null>;
 }
 
 /** The single place that turns a main-side path into a `TrackInfo` (and issues its token). */
 export function createTrackFactory(deps: TrackFactoryDeps): TrackFactory {
   const { fs, path, registry, metadata, artwork } = deps;
+  const platform = deps.platform ?? process.platform;
   return {
     async fromPath(filePath, options) {
       if (typeof filePath !== 'string') return null;
+      // Restoration only: reject UNC, device, relative and malformed paths before any fs access.
+      if (options?.localOnly === true && !isLocalAbsolutePath(filePath, platform)) return null;
       const extension = path.extname(filePath);
       if (audioTypeFor(extension) === undefined) return null;
       let available = true;

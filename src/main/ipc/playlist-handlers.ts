@@ -12,6 +12,7 @@ import {
   type PlaylistSaveResponse,
   type TrackInfo,
 } from '@shared/ipc';
+import { isLocalAbsolutePath, type PathPlatform } from '../library/local-path';
 import type { MediaRegistry } from '../library/media-registry';
 import type { PlaylistPersistence } from '../library/playlist-persistence';
 import type { TrackFactory } from '../library/track-info';
@@ -26,15 +27,19 @@ export interface PlaylistHandlerDeps {
   readonly persistence: PlaylistPersistence;
   readonly isTrustedSender: (event: SenderEventLike) => boolean;
   readonly log: Logger;
+  /** Platform whose path rules apply to persisted paths. Defaults to the current platform. */
+  readonly platform?: PathPlatform;
 }
 
 /**
  * `playlist:load` and `playlist:save`. Save accepts tokens only and maps them to paths in main;
  * an unknown token is dropped. Load is the only other issuer of media tokens besides the open
- * dialog: it re-authorizes persisted paths that still pass the audio extension and file checks.
+ * dialog: it re-authorizes persisted paths that are local absolute paths (no UNC, device or relative)
+ * and still pass the audio extension and file checks. Rejected entries are dropped silently.
  */
 export function registerPlaylistHandlers(deps: PlaylistHandlerDeps): () => void {
   const { ipcMain, registry, tracks, persistence, isTrustedSender, log } = deps;
+  const platform = deps.platform ?? process.platform;
   const disposeLoad = registerHandler({
     ipcMain,
     channel: IPC_CHANNELS.playlistLoad,
@@ -43,11 +48,19 @@ export function registerPlaylistHandlers(deps: PlaylistHandlerDeps): () => void 
     isTrustedSender,
     log,
     handler: async (): Promise<PlaylistLoadResponse> => {
-      const { paths, selectedPath } = await persistence.loadState();
+      const state = await persistence.loadState();
+      const paths = state.paths;
+      // A rejected selectedPath is treated as a stale selection and never issues a token.
+      const selectedPath = isLocalAbsolutePath(state.selectedPath, platform)
+        ? state.selectedPath
+        : null;
       const items: TrackInfo[] = [];
       let savedSelection: string | null = null;
       for (const filePath of paths.slice(0, MAX_TRACKS_PER_REQUEST)) {
-        const track = await tracks.fromPath(filePath, { allowMissing: true });
+        const track = await tracks.fromPath(filePath, {
+          allowMissing: true,
+          localOnly: true,
+        });
         if (track === 'full') break;
         if (track === null) continue;
         items.push(track);
