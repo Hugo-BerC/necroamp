@@ -8,6 +8,13 @@ import type { PlaylistPlayerPort } from './playlist-store';
 export function createPlayerPort(player: PlayerStore): PlaylistPlayerPort {
   return {
     playTrack: (track) => player.getState().playTrack(track),
+    loadTrack: (track) => {
+      player.getState().loadTrack(track);
+    },
+    unload: () => {
+      player.getState().unload();
+    },
+    isIdle: () => player.getState().playback.status === 'idle',
     stop: () => {
       player.getState().stop();
     },

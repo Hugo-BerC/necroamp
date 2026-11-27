@@ -215,9 +215,10 @@ test.describe('playlist, metadata and artwork', () => {
     await repeat.click();
     await expect(repeat).toHaveText('Repeat: Playlist');
     // Playlist: after b ends the list wraps to a.
+    // Importing into an empty list selects the first track (load only), so the record starts at 0.
     await recordCurrent(page);
     await rows(page).nth(0).locator('[data-part="track-play"]').click();
-    await expect.poll(() => seen(page), { timeout: 30_000 }).toEqual([-1, 0, 1, 0]);
+    await expect.poll(() => seen(page), { timeout: 30_000 }).toEqual([0, 1, 0]);
     // Track: the same item plays again and again.
     await repeat.click(); // Off
     await repeat.click(); // Track
@@ -507,7 +508,12 @@ test.describe('playlist persistence across launches', () => {
         string,
         unknown
       >;
-      expect(Object.keys(saved).sort()).toEqual(['items', 'schemaVersion']);
+      // The optional selectedPath (selection restore) is the only other key allowed.
+      expect(
+        Object.keys(saved)
+          .filter((key) => key !== 'selectedPath')
+          .sort(),
+      ).toEqual(['items', 'schemaVersion']);
       await closeKeepingData(first.launched);
       rmSync(vanish);
 

@@ -14,7 +14,13 @@ const EVENT = { senderFrame: null, sender: {} } as unknown as SenderEventLike;
 const UNKNOWN = '00000000-0000-4000-8000-000000000000';
 
 function setup(
-  options: { trusted?: boolean; saved?: string[]; missing?: string[]; limit?: number } = {},
+  options: {
+    trusted?: boolean;
+    saved?: string[];
+    selectedPath?: string | null;
+    missing?: string[];
+    limit?: number;
+  } = {},
 ) {
   const listeners = new Map<string, Listener>();
   const ipcMain: IpcMainLike = {
@@ -34,6 +40,9 @@ function setup(
   });
   const persistence = {
     load: vi.fn(() => Promise.resolve(options.saved ?? [])),
+    loadState: vi.fn(() =>
+      Promise.resolve({ paths: options.saved ?? [], selectedPath: options.selectedPath ?? null }),
+    ),
     save: vi.fn(() => Promise.resolve(true)),
   } satisfies PlaylistPersistence;
   const dispose = registerPlaylistHandlers({
@@ -56,7 +65,7 @@ describe('playlist:load', () => {
       ok: false,
       error: { code: 'INVALID_SENDER' },
     });
-    expect(persistence.load).not.toHaveBeenCalled();
+    expect(persistence.loadState).not.toHaveBeenCalled();
   });
 
   it('rejects arguments', async () => {
@@ -74,6 +83,27 @@ describe('playlist:load', () => {
       data: { schemaVersion: 1, items: [] },
     });
   });
+  it('returns the saved selection as a token, never a path', async () => {
+    const a = path.join('m', 'a.mp3');
+    const b = path.join('m', 'b.mp3');
+    const { invoke } = setup({ saved: [a, b], selectedPath: b });
+    const result = (await invoke(IPC_CHANNELS.playlistLoad)) as {
+      data: { items: { trackId: string }[]; selectedTrackId: string };
+    };
+    expect(result.data.selectedTrackId).toBe(result.data.items[1]?.trackId);
+    expect(JSON.stringify(result)).not.toContain('m' + path.sep);
+  });
+  it.each([null, path.join('m', 'removed.mp3'), path.join('m', 'x.txt')])(
+    'resolves selection %s that matches no track to the first track',
+    async (selectedPath) => {
+      const a = path.join('m', 'a.mp3');
+      const { invoke } = setup({ saved: [a, path.join('m', 'b.mp3')], selectedPath });
+      const result = (await invoke(IPC_CHANNELS.playlistLoad)) as {
+        data: { items: { trackId: string }[]; selectedTrackId: string };
+      };
+      expect(result.data.selectedTrackId).toBe(result.data.items[0]?.trackId);
+    },
+  );
 
   it('re-authorizes stored paths and marks missing files unavailable, keeping order', async () => {
     const a = path.join('m', 'a.mp3');
@@ -133,10 +163,28 @@ describe('playlist:save', () => {
       items: [{ trackId: b }, { trackId: UNKNOWN }, { trackId: a }],
     });
     expect(result).toEqual({ ok: true, data: { saved: true } });
-    expect(persistence.save).toHaveBeenCalledWith([
-      path.join('m', 'b.mp3'),
-      path.join('m', 'a.mp3'),
-    ]);
+    expect(persistence.save).toHaveBeenCalledWith(
+      [path.join('m', 'b.mp3'), path.join('m', 'a.mp3')],
+      null,
+    );
+  });
+  it('persists the selected token as a path and ignores unknown or null selections', async () => {
+    const { invoke, registry, persistence } = setup();
+    const a = registry.issue(path.join('m', 'a.mp3')) as string;
+    const p = path.join('m', 'a.mp3');
+    await invoke(IPC_CHANNELS.playlistSave, { items: [{ trackId: a }], selectedTrackId: a });
+    expect(persistence.save).toHaveBeenLastCalledWith([p], p);
+    await invoke(IPC_CHANNELS.playlistSave, { items: [{ trackId: a }], selectedTrackId: UNKNOWN });
+    expect(persistence.save).toHaveBeenLastCalledWith([p], null);
+    await invoke(IPC_CHANNELS.playlistSave, { items: [{ trackId: a }], selectedTrackId: null });
+    expect(persistence.save).toHaveBeenLastCalledWith([p], null);
+  });
+  it('rejects a path as selectedTrackId', async () => {
+    const { invoke, persistence } = setup();
+    expect(
+      await invoke(IPC_CHANNELS.playlistSave, { items: [], selectedTrackId: 'C:\\x.mp3' }),
+    ).toMatchObject({ ok: false, error: { code: 'INVALID_PAYLOAD' } });
+    expect(persistence.save).not.toHaveBeenCalled();
   });
 
   it('reports INTERNAL when the write fails', async () => {

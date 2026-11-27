@@ -34,6 +34,9 @@ function setup(initial: TrackInfo[] = [], options: { debounce?: number } = {}) {
   const port: PlaylistPlayerPort = {
     playTrack: vi.fn(() => Promise.resolve()),
     stop: vi.fn(),
+    loadTrack: vi.fn(),
+    unload: vi.fn(),
+    isIdle: () => true,
     restart: vi.fn(),
     positionSec: () => position,
     subscribe: (l) => {
@@ -173,6 +176,8 @@ describe('selecting and navigating', () => {
 
   it('previous does nothing without a current track', async () => {
     const ctx = await filled(2);
+    ctx.get().remove(0);
+    expect(ctx.get().current).toBeNull();
     await ctx.get().previous();
     expect(ctx.port.playTrack).not.toHaveBeenCalled();
     expect(ctx.port.restart).not.toHaveBeenCalled();
@@ -357,16 +362,14 @@ describe('reorder, remove, clear', () => {
     expect(ctx.get().items).toHaveLength(2);
   });
 
-  it('clear empties the list and stops playback only when something is selected', async () => {
+  it('clear empties the list and unloads the player', async () => {
     const ctx = await filled(2);
     ctx.get().clear();
     expect(ctx.get().items).toEqual([]);
-    expect(ctx.port.stop).not.toHaveBeenCalled();
+    expect(ctx.get().current).toBeNull();
+    expect(ctx.port.unload).toHaveBeenCalledOnce();
     ctx.get().clear();
-    const playing = await filled(2);
-    await playing.get().playIndex(0);
-    playing.get().clear();
-    expect(playing.port.stop).toHaveBeenCalledOnce();
+    expect(ctx.port.unload).toHaveBeenCalledOnce();
   });
 });
 
@@ -378,7 +381,7 @@ describe('persistence', () => {
     expect(ctx.persistence.save).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(500);
     expect(ctx.persistence.save).toHaveBeenCalledOnce();
-    expect(ctx.persistence.save).toHaveBeenCalledWith([uuid(2), uuid(1)]);
+    expect(ctx.persistence.save).toHaveBeenCalledWith([uuid(2), uuid(1)], uuid(1));
   });
 
   it('flush saves immediately once and not when nothing is pending', async () => {
@@ -432,5 +435,119 @@ describe('persistence', () => {
     ctx.get().dispose();
     await ctx.get().load();
     expect(ctx.get().loadStatus).toBe('loading');
+  });
+});
+
+describe('selection on import and restore', () => {
+  it('loads the first track on import into an empty playlist and never plays it', async () => {
+    const ctx = setup([track(1), track(2)]);
+    await ctx.get().addFiles();
+    expect(ctx.get().current).toBe(0);
+    expect(ctx.port.loadTrack).toHaveBeenCalledOnce();
+    expect(ctx.port.loadTrack).toHaveBeenCalledWith(expect.objectContaining({ trackId: uuid(1) }));
+    expect(ctx.port.playTrack).not.toHaveBeenCalled();
+  });
+
+  it('skips unavailable leading tracks when choosing the first to load', async () => {
+    const ctx = setup([track(1, { available: false }), track(2)]);
+    await ctx.get().addFiles();
+    expect(ctx.get().current).toBe(1);
+    expect(ctx.port.loadTrack).toHaveBeenCalledWith(expect.objectContaining({ trackId: uuid(2) }));
+  });
+
+  it('does not replace a track already loaded in the player', async () => {
+    const ctx = setup([track(1)]);
+    vi.spyOn(ctx.port, 'isIdle').mockReturnValue(false);
+    await ctx.get().addFiles();
+    expect(ctx.port.loadTrack).not.toHaveBeenCalled();
+    expect(ctx.get().current).toBeNull();
+  });
+
+  it('keeps the loaded track, play state and position when adding to a non-empty playlist', async () => {
+    const ctx = setup([track(1), track(2)]);
+    await ctx.get().addFiles();
+    await ctx.get().playIndex(1);
+    ctx.setOpen([track(3), track(4)]);
+    await ctx.get().addFiles();
+    expect(ctx.get().current).toBe(1);
+    expect(ctx.port.loadTrack).toHaveBeenCalledOnce();
+    expect(ctx.port.unload).not.toHaveBeenCalled();
+    expect(ctx.port.stop).not.toHaveBeenCalled();
+    expect(ctx.port.playTrack).toHaveBeenCalledOnce();
+  });
+
+  it('playIndex loads and plays the chosen track (double-click path)', async () => {
+    const ctx = setup([track(1), track(2)]);
+    await ctx.get().addFiles();
+    await ctx.get().playIndex(1);
+    expect(ctx.port.playTrack).toHaveBeenCalledWith(expect.objectContaining({ trackId: uuid(2) }));
+    expect(ctx.get().current).toBe(1);
+  });
+
+  it('saves the selected track id, also when the selection changes by playing', async () => {
+    const ctx = setup([track(1), track(2)]);
+    await ctx.get().addFiles();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(ctx.persistence.save).toHaveBeenLastCalledWith([uuid(1), uuid(2)], uuid(1));
+    await ctx.get().playIndex(1);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(ctx.persistence.save).toHaveBeenLastCalledWith([uuid(1), uuid(2)], uuid(2));
+  });
+
+  it('restores the persisted selection loaded and not playing', async () => {
+    const ctx = setup();
+    vi.mocked(ctx.persistence.load).mockResolvedValueOnce({
+      ok: true,
+      items: [track(1), track(2), track(3)],
+      selectedTrackId: uuid(2),
+    });
+    await ctx.get().load();
+    expect(ctx.get().current).toBe(1);
+    expect(ctx.port.loadTrack).toHaveBeenCalledWith(expect.objectContaining({ trackId: uuid(2) }));
+    expect(ctx.port.playTrack).not.toHaveBeenCalled();
+  });
+
+  it.each([null, undefined, uuid(99)])(
+    'falls back to the first track when the restored selection is %s',
+    async (selected) => {
+      const ctx = setup();
+      vi.mocked(ctx.persistence.load).mockResolvedValueOnce({
+        ok: true,
+        items: [track(1), track(2)],
+        ...(selected === undefined ? {} : { selectedTrackId: selected }),
+      });
+      await ctx.get().load();
+      expect(ctx.get().current).toBe(0);
+      expect(ctx.port.playTrack).not.toHaveBeenCalled();
+    },
+  );
+
+  it('loads the first available track when the restored selection is unavailable', async () => {
+    const ctx = setup();
+    vi.mocked(ctx.persistence.load).mockResolvedValueOnce({
+      ok: true,
+      items: [track(1), track(2, { available: false })],
+      selectedTrackId: uuid(2),
+    });
+    await ctx.get().load();
+    expect(ctx.get().current).toBe(0);
+    expect(ctx.port.loadTrack).toHaveBeenCalledWith(expect.objectContaining({ trackId: uuid(1) }));
+    expect(ctx.port.playTrack).not.toHaveBeenCalled();
+  });
+
+  it('restores nothing for an empty persisted list', async () => {
+    const ctx = setup();
+    await ctx.get().load();
+    expect(ctx.get().current).toBeNull();
+    expect(ctx.port.loadTrack).not.toHaveBeenCalled();
+  });
+
+  it('clearAndSave unloads the player and saves no selection', async () => {
+    const ctx = setup([track(1)]);
+    await ctx.get().addFiles();
+    await ctx.get().clearAndSave();
+    expect(ctx.port.unload).toHaveBeenCalled();
+    expect(ctx.get().current).toBeNull();
+    expect(ctx.persistence.save).toHaveBeenLastCalledWith([], null);
   });
 });

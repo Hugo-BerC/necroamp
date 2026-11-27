@@ -40,6 +40,10 @@ export interface PlayerState {
   readonly open: () => Promise<void>;
   /** Loads and plays a known track (used by the playlist). */
   readonly playTrack: (track: TrackInfo) => Promise<void>;
+  /** Loads a known track without starting playback. Play is enabled once metadata arrives. */
+  readonly loadTrack: (track: TrackInfo) => void;
+  /** Stops playback and drops the loaded track, returning to the idle state. */
+  readonly unload: () => void;
   readonly play: () => Promise<void>;
   readonly pause: () => void;
   readonly stop: () => void;
@@ -121,6 +125,26 @@ export function createPlayerStore(engine: AudioEngine, client: LibraryClient): P
       dispatch({ type: 'play' });
       await startPlay();
     };
+    const loadTrack = (track: TrackInfo): void => {
+      set({ track });
+      loadGeneration += 1;
+      dispatch({ type: 'load', trackId: track.trackId });
+      engine.load(track.mediaUrl);
+    };
+    const unload = (): void => {
+      loadGeneration += 1;
+      if (get().playback.status !== 'idle') {
+        engine.stop();
+      }
+      set((state) => ({
+        track: null,
+        playback: {
+          ...INITIAL_PLAYBACK_STATE,
+          volume: state.playback.volume,
+          muted: state.playback.muted,
+        },
+      }));
+    };
     engine.setVolume(INITIAL_PLAYBACK_STATE.volume);
     engine.setMuted(INITIAL_PLAYBACK_STATE.muted);
 
@@ -130,6 +154,8 @@ export function createPlayerStore(engine: AudioEngine, client: LibraryClient): P
       openFailure: null,
       lastOutcome: null,
       playTrack,
+      loadTrack,
+      unload,
       open: async () => {
         const result = await client.openFiles({ multiple: false });
         if (!result.ok) {

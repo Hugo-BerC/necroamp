@@ -27,6 +27,9 @@ function setup(folder: OpenFolderClientResult, restored: TrackInfo[] = []) {
   const port: PlaylistPlayerPort = {
     playTrack: vi.fn(() => Promise.resolve()),
     stop: vi.fn(),
+    loadTrack: vi.fn(),
+    unload: vi.fn(),
+    isIdle: () => true,
     restart: vi.fn(),
     positionSec: () => 0,
     subscribe: () => () => undefined,
@@ -130,9 +133,9 @@ describe('native menu wiring', () => {
     await flush();
     ctx.send({ command: 'clear-playlist' });
     await flush();
-    expect(ctx.port.stop).toHaveBeenCalled();
+    expect(ctx.port.unload).toHaveBeenCalled();
     expect(ctx.store.getState().items).toEqual([]);
-    expect(ctx.persistence.save).toHaveBeenLastCalledWith([]);
+    expect(ctx.persistence.save).toHaveBeenLastCalledWith([], null);
     expect(ctx.reportPlaylistState).toHaveBeenLastCalledWith({ hasTracks: false });
   });
 

@@ -184,3 +184,48 @@ describe('player store', () => {
     expect(mocks.dispose).toHaveBeenCalledOnce();
   });
 });
+
+describe('player store load without play', () => {
+  it('loadTrack loads the track, never plays, and becomes stopped when metadata arrives', () => {
+    const { store, mocks, emit } = setup();
+    store.getState().loadTrack(TRACK);
+    expect(mocks.load).toHaveBeenCalledWith(TRACK.mediaUrl);
+    expect(mocks.play).not.toHaveBeenCalled();
+    expect(store.getState().track).toEqual(TRACK);
+    expect(store.getState().playback.status).toBe('loading');
+    emit({ type: 'metadata', durationSec: 42 });
+    expect(store.getState().playback).toMatchObject({ status: 'stopped', durationSec: 42 });
+  });
+
+  it('play after loadTrack starts playback of the loaded track', async () => {
+    const { store, mocks, emit } = setup();
+    store.getState().loadTrack(TRACK);
+    emit({ type: 'metadata', durationSec: 42 });
+    await store.getState().play();
+    expect(mocks.play).toHaveBeenCalledOnce();
+    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(store.getState().playback.status).toBe('playing');
+  });
+
+  it('unload stops the engine, forgets the track and keeps volume and mute', async () => {
+    const { store, mocks } = setup();
+    await store.getState().open();
+    store.getState().setVolume(0.3);
+    store.getState().toggleMute();
+    store.getState().unload();
+    expect(mocks.stop).toHaveBeenCalled();
+    expect(store.getState().track).toBeNull();
+    expect(store.getState().playback).toMatchObject({
+      status: 'idle',
+      trackId: null,
+      volume: 0.3,
+      muted: true,
+    });
+  });
+
+  it('unload on an idle player does not touch the engine', () => {
+    const { store, mocks } = setup();
+    store.getState().unload();
+    expect(mocks.stop).not.toHaveBeenCalled();
+  });
+});

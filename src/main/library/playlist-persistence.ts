@@ -5,6 +5,8 @@ import type { Logger } from '../logging/logger';
 /** Persisted shape. Paths stay in main; the renderer only ever sees session tokens. */
 export const persistedPlaylistSchema = z.strictObject({
   schemaVersion: z.literal(PLAYLIST_SCHEMA_VERSION),
+  /** Optional, absent in older files. Path of the selected item; resolved to a token on load. */
+  selectedPath: z.string().min(1).max(4096).optional(),
   items: z.array(z.strictObject({ path: z.string().min(1).max(4096) })).max(MAX_TRACKS_PER_REQUEST),
 });
 
@@ -15,11 +17,17 @@ export interface PlaylistFs {
   rm(path: string): Promise<void>;
 }
 
+export interface PlaylistState {
+  readonly paths: string[];
+  readonly selectedPath: string | null;
+}
 export interface PlaylistPersistence {
   /** Returns the saved paths. Missing, corrupt or unknown-version files give an empty list. */
   load(): Promise<string[]>;
+  /** Like load, plus the saved selection (null when absent). */
+  loadState(): Promise<PlaylistState>;
   /** Atomic replace. Returns false when the write failed. Calls are serialized. */
-  save(paths: readonly string[]): Promise<boolean>;
+  save(paths: readonly string[], selectedPath?: string | null): Promise<boolean>;
 }
 
 function errorCode(error: unknown): string {
@@ -40,9 +48,13 @@ export function createPlaylistPersistence(deps: {
   const tempPath = `${filePath}.tmp`;
   let queue: Promise<unknown> = Promise.resolve();
 
-  const writeAtomic = async (paths: readonly string[]): Promise<boolean> => {
+  const writeAtomic = async (
+    paths: readonly string[],
+    selectedPath: string | null | undefined,
+  ): Promise<boolean> => {
     const body = JSON.stringify({
       schemaVersion: PLAYLIST_SCHEMA_VERSION,
+      ...(selectedPath !== null && selectedPath !== undefined ? { selectedPath } : {}),
       items: paths.map((path) => ({ path })),
     });
     try {
@@ -60,32 +72,42 @@ export function createPlaylistPersistence(deps: {
     }
   };
 
-  return {
-    async load() {
+  const loadState = async (): Promise<PlaylistState> => {
+    const empty: PlaylistState = { paths: [], selectedPath: null };
+    {
       let text: string;
       try {
         text = await fs.readFile(filePath);
       } catch (error) {
         const code = errorCode(error);
         if (code !== 'ENOENT') log.warn('playlist.read_failed', { code });
-        return [];
+        return empty;
       }
       let json: unknown;
       try {
         json = JSON.parse(text);
       } catch {
         log.warn('playlist.corrupt', { code: 'JSON' });
-        return [];
+        return empty;
       }
       const parsed = persistedPlaylistSchema.safeParse(json);
       if (!parsed.success) {
         log.warn('playlist.corrupt', { code: 'SCHEMA' });
-        return [];
+        return empty;
       }
-      return parsed.data.items.map((item) => item.path);
+      return {
+        paths: parsed.data.items.map((item) => item.path),
+        selectedPath: parsed.data.selectedPath ?? null,
+      };
+    }
+  };
+  return {
+    loadState,
+    async load() {
+      return (await loadState()).paths;
     },
-    save(paths) {
-      const run = queue.then(() => writeAtomic(paths));
+    save(paths, selectedPath) {
+      const run = queue.then(() => writeAtomic(paths, selectedPath));
       queue = run.catch(() => undefined);
       return run;
     },

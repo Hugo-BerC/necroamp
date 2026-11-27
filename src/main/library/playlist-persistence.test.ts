@@ -110,4 +110,31 @@ describe('playlist persistence', () => {
     expect(await store.load()).toEqual(['/2.mp3']);
     expect(files.size).toBe(1);
   });
+  it('round-trips the selected path and omits it when absent', async () => {
+    const { fs, files } = memoryFs();
+    const store = make(fs);
+    await store.save(['/a.mp3', '/b.flac'], '/b.flac');
+    expect(JSON.parse(files.get(FILE) as string)).toEqual({
+      schemaVersion: 1,
+      selectedPath: '/b.flac',
+      items: [{ path: '/a.mp3' }, { path: '/b.flac' }],
+    });
+    expect(await store.loadState()).toEqual({
+      paths: ['/a.mp3', '/b.flac'],
+      selectedPath: '/b.flac',
+    });
+    await store.save(['/a.mp3'], null);
+    expect(JSON.parse(files.get(FILE) as string)).not.toHaveProperty('selectedPath');
+  });
+  it('loads an older file without a selection', async () => {
+    const old = JSON.stringify({ schemaVersion: 1, items: [{ path: '/a.mp3' }] });
+    expect(await make(memoryFs(old).fs).loadState()).toEqual({
+      paths: ['/a.mp3'],
+      selectedPath: null,
+    });
+  });
+  it('rejects an invalid selectedPath', async () => {
+    const bad = JSON.stringify({ schemaVersion: 1, selectedPath: '', items: [] });
+    expect(await make(memoryFs(bad).fs).loadState()).toEqual({ paths: [], selectedPath: null });
+  });
 });

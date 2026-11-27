@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { TrackInfo } from '@shared/ipc';
@@ -25,6 +25,7 @@ const track = (n: number): TrackInfo => ({
 });
 
 function setup() {
+  let listener: Parameters<AudioEngine['subscribe']>[0] | undefined;
   const engine: AudioEngine = {
     load: vi.fn(),
     play: vi.fn(() => Promise.resolve()),
@@ -33,7 +34,10 @@ function setup() {
     seek: vi.fn(),
     setVolume: vi.fn(),
     setMuted: vi.fn(),
-    subscribe: () => () => undefined,
+    subscribe: (l) => {
+      listener = l;
+      return () => undefined;
+    },
     dispose: vi.fn(),
   };
   const tracks = [track(1), track(2), track(3)];
@@ -50,7 +54,15 @@ function setup() {
       </PlaylistStoreProvider>
     </PlayerStoreProvider>,
   );
-  return { engine, playlist };
+  return {
+    engine,
+    playlist,
+    emitMetadata: (durationSec: number) => {
+      act(() => {
+        listener?.({ type: 'metadata', durationSec });
+      });
+    },
+  };
 }
 
 describe('player with a playlist', () => {
@@ -64,7 +76,8 @@ describe('player with a playlist', () => {
     expect(await screen.findByRole('button', { name: 'Next' })).not.toHaveAttribute(
       'aria-disabled',
     );
-    expect(previous).toHaveAttribute('aria-disabled', 'true');
+    // The first track is selected and loaded on import, so Previous is available.
+    expect(previous).not.toHaveAttribute('aria-disabled');
     await playlist.getState().playIndex(0);
     expect(await screen.findByText('First Album')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: STRINGS.player.artworkAlt('Song 1') })).toHaveAttribute(
@@ -83,5 +96,27 @@ describe('player with a playlist', () => {
     await playlist.getState().playIndex(1);
     await userEvent.click(screen.getByRole('button', { name: STRINGS.player.controls.previous }));
     expect(engine.load).toHaveBeenLastCalledWith(track(1).mediaUrl);
+  });
+});
+
+describe('player after import', () => {
+  it('shows the first track metadata, artwork and duration, with Play enabled and no autoplay', async () => {
+    const { engine, playlist, emitMetadata } = setup();
+    const play = screen.getByRole('button', { name: STRINGS.player.controls.play });
+    expect(play).toHaveAttribute('aria-disabled', 'true');
+    await playlist.getState().addFiles();
+    expect(await screen.findByText('Song 1')).toBeInTheDocument();
+    expect(screen.getByText('Band')).toBeInTheDocument();
+    expect(screen.getByText('First Album')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: STRINGS.player.artworkAlt('Song 1') }),
+    ).toBeInTheDocument();
+    expect(engine.load).toHaveBeenCalledWith(track(1).mediaUrl);
+    expect(engine.play).not.toHaveBeenCalled();
+    expect(play).toHaveAttribute('aria-disabled', 'true'); // Still loading.
+    emitMetadata(100);
+    expect(play).not.toHaveAttribute('aria-disabled');
+    expect(screen.getByText('1:40')).toBeInTheDocument();
+    expect(engine.play).not.toHaveBeenCalled();
   });
 });

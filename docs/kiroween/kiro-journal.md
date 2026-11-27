@@ -302,3 +302,7 @@ Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check
 - Feature: Audio Engine. Menu clicks go to the renderer on a typed `menu:command` push channel. The renderer reports whether the playlist has tracks on `menu:report-state`, so Clear Playlist is disabled when empty. Open Folder is a new `library:open-folder` handler that scans in main (depth, entry and track limits, symlinks skipped) and issues media tokens, so no paths reach the renderer.
 - Changed: shared IPC schemas, main menu, folder scan and handlers, preload API, and tests for each. Existing security settings are unchanged.
 - Agents: desktop-engineer (main, preload, shared IPC), qa-engineer (integration test updates), with the orchestrator handling integration, commits and push.
+
+### 17.2 Auto-select first track and restore selection
+- Defect from manual acceptance testing: import into an empty playlist left the player on 'No track loaded'. Fixed across persistence (desktop-engineer), stores (frontend-engineer) and tests (qa-engineer). First QA gate returned CHANGES_REQUESTED (D1 to D3); targeted fixes were delegated per owner and the orchestrator reran the full gates.
+

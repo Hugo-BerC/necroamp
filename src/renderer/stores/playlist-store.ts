@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand';
-import type { TrackInfo } from '@shared/ipc';
+import { resolveSelectedTrackId, type TrackInfo } from '@shared/ipc';
 import type { LibraryClient, OpenFilesFailureReason } from './player-store';
 import {
   MAX_PLAYLIST_ITEMS,
@@ -20,7 +20,12 @@ import {
 export type PersistenceFailureReason = OpenFilesFailureReason;
 
 export type PlaylistLoadResult =
-  | { readonly ok: true; readonly items: readonly TrackInfo[] }
+  | {
+      readonly ok: true;
+      readonly items: readonly TrackInfo[];
+      /** Session token of the persisted selection, already resolved by main. */
+      readonly selectedTrackId?: string | null;
+    }
   | { readonly ok: false; readonly reason: PersistenceFailureReason };
 export type PlaylistSaveResult =
   { readonly ok: true } | { readonly ok: false; readonly reason: PersistenceFailureReason };
@@ -28,7 +33,10 @@ export type PlaylistSaveResult =
 /** What the store needs from the bridge for persistence. Tests pass a fake. */
 export interface PlaylistPersistenceClient {
   readonly load: () => Promise<PlaylistLoadResult>;
-  readonly save: (trackIds: readonly string[]) => Promise<PlaylistSaveResult>;
+  readonly save: (
+    trackIds: readonly string[],
+    selectedTrackId: string | null,
+  ) => Promise<PlaylistSaveResult>;
 }
 
 export interface PlayerOutcomeEvent {
@@ -42,6 +50,12 @@ export interface PlayerOutcomeEvent {
  */
 export interface PlaylistPlayerPort {
   readonly playTrack: (track: TrackInfo) => Promise<void>;
+  /** Loads a track without playing it. */
+  readonly loadTrack: (track: TrackInfo) => void;
+  /** Stops playback and drops the loaded track. */
+  readonly unload: () => void;
+  /** True when no track is loaded in the player. */
+  readonly isIdle: () => boolean;
   readonly stop: () => void;
   /** Seeks to the start of the loaded track and plays it. */
   readonly restart: () => void;
@@ -132,6 +146,11 @@ export function createPlaylistStore(
       order = createPlayOrder(list.items.length, list.current, get().shuffle, random);
     };
 
+    const selectedId = (): string | null => {
+      const { items, current } = get();
+      return current === null ? null : (items[current]?.trackId ?? null);
+    };
+
     const save = async (): Promise<void> => {
       if (saveTimer !== undefined) {
         clearTimeout(saveTimer);
@@ -141,7 +160,10 @@ export function createPlaylistStore(
         return;
       }
       savePending = false;
-      const result = await persistence.save(get().items.map((item) => item.trackId));
+      const result = await persistence.save(
+        get().items.map((item) => item.trackId),
+        selectedId(),
+      );
       if (!result.ok) {
         set({ notice: { code: 'save-failed' } });
       }
@@ -163,12 +185,24 @@ export function createPlaylistStore(
       rebuildOrder(list);
     };
 
+    /** Selects and loads an item without playing, only if nothing is selected or loaded. */
+    const selectIfNothingLoaded = (index: number): boolean => {
+      const item = get().items[index];
+      if (get().current !== null || item === undefined || !item.available || !port.isIdle()) {
+        return false;
+      }
+      commit({ items: get().items, current: index });
+      port.loadTrack(item);
+      return true;
+    };
+
     const startItem = async (index: number): Promise<void> => {
       const item = get().items[index];
       if (item === undefined) {
         return;
       }
       set({ current: index });
+      scheduleSave();
       await port.playTrack(item);
     };
 
@@ -237,6 +271,12 @@ export function createPlaylistStore(
       });
       if (after !== before) {
         edit(after);
+        if (before.current === null) {
+          const first = after.items.findIndex((item) => item.available);
+          if (first !== -1) {
+            selectIfNothingLoaded(first);
+          }
+        }
       }
     };
     return {
@@ -276,7 +316,7 @@ export function createPlaylistStore(
         appendTracks(tracks, truncated);
       },
       clearAndSave: async () => {
-        port.stop();
+        port.unload();
         set({ notice: null });
         if (get().items.length > 0) {
           edit(emptyPlaylist<TrackInfo>());
@@ -355,9 +395,7 @@ export function createPlaylistStore(
         if (get().items.length === 0) {
           return;
         }
-        if (get().current !== null) {
-          port.stop();
-        }
+        port.unload();
         edit(emptyPlaylist<TrackInfo>());
       },
 
@@ -384,6 +422,16 @@ export function createPlaylistStore(
         const merged = insertItems(snapshot(), result.items.slice(0, MAX_PLAYLIST_ITEMS), 0);
         commit(merged);
         set({ loadStatus: 'ready' });
+        // Restore the selection, loaded but not playing. A track the user chose while the list
+        // was loading wins.
+        const wanted = resolveSelectedTrackId(merged.items, result.selectedTrackId);
+        const index = wanted === null ? -1 : merged.items.findIndex((i) => i.trackId === wanted);
+        // A selection that is gone or unavailable falls back to the first available item.
+        const usable = index !== -1 && merged.items[index]?.available === true;
+        const target = usable ? index : merged.items.findIndex((i) => i.available);
+        if (target !== -1) {
+          selectIfNothingLoaded(target);
+        }
       },
 
       flush: save,

@@ -163,10 +163,14 @@ export function createPlaylistClient(host: BridgeHost): PlaylistPersistenceClien
         return { ok: false, reason: 'invalid-response' };
       }
       return parsed.data.ok
-        ? { ok: true, items: parsed.data.data.items }
+        ? {
+            ok: true,
+            items: parsed.data.data.items,
+            selectedTrackId: parsed.data.data.selectedTrackId ?? null,
+          }
         : { ok: false, reason: 'ipc-error' };
     },
-    save: async (trackIds): Promise<PlaylistSaveResult> => {
+    save: async (trackIds, selectedTrackId): Promise<PlaylistSaveResult> => {
       const playlist = readPlaylistNamespace(host);
       if (playlist === undefined || typeof playlist['save'] !== 'function') {
         return { ok: false, reason: 'unavailable' };
@@ -175,6 +179,7 @@ export function createPlaylistClient(host: BridgeHost): PlaylistPersistenceClien
       try {
         raw = await (playlist['save'] as (request: unknown) => Promise<unknown>)({
           items: trackIds.map((trackId) => ({ trackId })),
+          selectedTrackId,
         });
       } catch {
         return { ok: false, reason: 'rejected' };

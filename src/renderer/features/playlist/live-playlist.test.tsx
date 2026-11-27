@@ -30,6 +30,9 @@ function setup(tracks: TrackInfo[]) {
   const port: PlaylistPlayerPort = {
     playTrack: vi.fn(() => Promise.resolve()),
     stop: vi.fn(),
+    loadTrack: vi.fn(),
+    unload: vi.fn(),
+    isIdle: () => true,
     restart: vi.fn(),
     positionSec: () => 0,
     subscribe: (_l: (e: PlayerOutcomeEvent) => void) => () => undefined,
@@ -173,6 +176,9 @@ describe('live playlist region', () => {
     const port: PlaylistPlayerPort = {
       playTrack: vi.fn(() => Promise.resolve()),
       stop: vi.fn(),
+      loadTrack: vi.fn(),
+      unload: vi.fn(),
+      isIdle: () => true,
       restart: vi.fn(),
       positionSec: () => 0,
       subscribe: () => () => undefined,
@@ -198,6 +204,9 @@ describe('live playlist region', () => {
     const port: PlaylistPlayerPort = {
       playTrack: vi.fn(() => Promise.resolve()),
       stop: vi.fn(),
+      loadTrack: vi.fn(),
+      unload: vi.fn(),
+      isIdle: () => true,
       restart: vi.fn(),
       positionSec: () => 0,
       subscribe: () => () => undefined,
@@ -223,6 +232,9 @@ describe('live playlist region', () => {
     const port: PlaylistPlayerPort = {
       playTrack: vi.fn(() => Promise.resolve()),
       stop: vi.fn(),
+      loadTrack: vi.fn(),
+      unload: vi.fn(),
+      isIdle: () => true,
       restart: vi.fn(),
       positionSec: () => 0,
       subscribe: () => () => undefined,

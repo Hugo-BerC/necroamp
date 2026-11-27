@@ -68,7 +68,7 @@ export function useLivePlayer(
 
   return useMemo(() => {
     const hasTrack = track !== null && playback.status !== 'idle';
-    const canPlay = hasTrack && playback.status !== 'playing';
+    const canPlay = hasTrack && playback.status !== 'playing' && playback.status !== 'loading';
     const controls: LiveTransportControl[] = [
       {
         id: 'previous',
@@ -124,7 +124,7 @@ export function useLivePlayer(
       title: track?.title ?? STRINGS.player.noTrack,
       artist: track === null || track.artist === '' ? STRINGS.player.noArtist : track.artist,
       elapsed: formatTime(hasTrack ? playback.positionSec : null),
-      duration: formatTime(playback.durationSec),
+      duration: formatTime(playback.durationSec ?? track?.durationSec ?? null),
       positionSec: playback.positionSec,
       durationSec: playback.durationSec,
       seek,

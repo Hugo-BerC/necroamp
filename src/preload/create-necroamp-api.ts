@@ -138,7 +138,9 @@ export function createNecroampApi(
     if (!request.success) return invalidPayload();
     // Re-built from the parsed value so no extra property can travel across the bridge.
     const items = request.data[0].items.map((entry) => ({ trackId: entry.trackId }));
-    return call(IPC_CHANNELS.playlistSave, [{ items }], playlistSaveResponseSchema);
+    const selected = request.data[0].selectedTrackId;
+    const payload = selected === undefined ? { items } : { items, selectedTrackId: selected };
+    return call(IPC_CHANNELS.playlistSave, [payload], playlistSaveResponseSchema);
   };
 
   const reportPlaylistState = async (...args: unknown[]): Promise<unknown> => {

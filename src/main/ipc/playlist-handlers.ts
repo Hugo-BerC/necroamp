@@ -3,6 +3,7 @@ import {
   MAX_TRACKS_PER_REQUEST,
   PLAYLIST_SCHEMA_VERSION,
   createIpcError,
+  resolveSelectedTrackId,
   playlistLoadRequestSchema,
   playlistLoadResponseSchema,
   playlistSaveRequestSchema,
@@ -42,14 +43,25 @@ export function registerPlaylistHandlers(deps: PlaylistHandlerDeps): () => void 
     isTrustedSender,
     log,
     handler: async (): Promise<PlaylistLoadResponse> => {
-      const paths = await persistence.load();
+      const { paths, selectedPath } = await persistence.loadState();
       const items: TrackInfo[] = [];
+      let savedSelection: string | null = null;
       for (const filePath of paths.slice(0, MAX_TRACKS_PER_REQUEST)) {
         const track = await tracks.fromPath(filePath, { allowMissing: true });
         if (track === 'full') break;
-        if (track !== null) items.push(track);
+        if (track === null) continue;
+        items.push(track);
+        if (savedSelection === null && filePath === selectedPath) savedSelection = track.trackId;
       }
-      return { ok: true, data: { schemaVersion: PLAYLIST_SCHEMA_VERSION, items } };
+      const selectedTrackId = resolveSelectedTrackId(items, savedSelection);
+      return {
+        ok: true,
+        data: {
+          schemaVersion: PLAYLIST_SCHEMA_VERSION,
+          items,
+          ...(selectedTrackId === null ? {} : { selectedTrackId }),
+        },
+      };
     },
   });
   const disposeSave = registerHandler({
@@ -65,7 +77,13 @@ export function registerPlaylistHandlers(deps: PlaylistHandlerDeps): () => void 
         const filePath = registry.resolve(entry.trackId);
         if (filePath !== undefined) paths.push(filePath);
       }
-      const saved = await persistence.save(paths);
+      const selected = request.selectedTrackId;
+      const selectedPath =
+        selected === null || selected === undefined ? undefined : registry.resolve(selected);
+      const saved = await persistence.save(
+        paths,
+        selectedPath !== undefined && paths.includes(selectedPath) ? selectedPath : null,
+      );
       return saved
         ? { ok: true, data: { saved: true } }
         : { ok: false, error: createIpcError('INTERNAL') };

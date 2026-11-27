@@ -21,7 +21,7 @@ describe('createPlaylistClient', () => {
     async (h) => {
       const client = createPlaylistClient(h);
       expect(await client.load()).toEqual({ ok: false, reason: 'unavailable' });
-      expect(await client.save([])).toEqual({ ok: false, reason: 'unavailable' });
+      expect(await client.save([], null)).toEqual({ ok: false, reason: 'unavailable' });
     },
   );
 
@@ -31,7 +31,23 @@ describe('createPlaylistClient', () => {
         load: () => Promise.resolve({ ok: true, data: { schemaVersion: 1, items: [TRACK] } }),
       }),
     );
-    expect(await client.load()).toEqual({ ok: true, items: [TRACK] });
+    expect(await client.load()).toEqual({ ok: true, items: [TRACK], selectedTrackId: null });
+  });
+  it('passes the resolved selected track id through on load', async () => {
+    const client = createPlaylistClient(
+      host({
+        load: () =>
+          Promise.resolve({
+            ok: true,
+            data: { schemaVersion: 1, items: [TRACK], selectedTrackId: TRACK.trackId },
+          }),
+      }),
+    );
+    expect(await client.load()).toEqual({
+      ok: true,
+      items: [TRACK],
+      selectedTrackId: TRACK.trackId,
+    });
   });
 
   it('maps rejection, invalid and ipc-error responses on load', async () => {
@@ -63,23 +79,29 @@ describe('createPlaylistClient', () => {
   it('sends only track ids on save and parses the reply', async () => {
     const save = vi.fn(() => Promise.resolve({ ok: true, data: { saved: true } }));
     const client = createPlaylistClient(host({ save }));
-    expect(await client.save([TRACK.trackId])).toEqual({ ok: true });
-    expect(save).toHaveBeenCalledWith({ items: [{ trackId: TRACK.trackId }] });
+    expect(await client.save([TRACK.trackId], TRACK.trackId)).toEqual({ ok: true });
+    expect(save).toHaveBeenCalledWith({
+      items: [{ trackId: TRACK.trackId }],
+      selectedTrackId: TRACK.trackId,
+    });
   });
 
   it('maps rejection, invalid and ipc-error responses on save', async () => {
     expect(
-      await createPlaylistClient(host({ save: () => Promise.reject(new Error('x')) })).save([]),
+      await createPlaylistClient(host({ save: () => Promise.reject(new Error('x')) })).save(
+        [],
+        null,
+      ),
     ).toEqual({ ok: false, reason: 'rejected' });
     expect(
-      await createPlaylistClient(host({ save: () => Promise.resolve({ nope: 1 }) })).save([]),
+      await createPlaylistClient(host({ save: () => Promise.resolve({ nope: 1 }) })).save([], null),
     ).toEqual({ ok: false, reason: 'invalid-response' });
     expect(
       await createPlaylistClient(
         host({
           save: () => Promise.resolve({ ok: false, error: { code: 'INTERNAL', message: 'x' } }),
         }),
-      ).save([]),
+      ).save([], null),
     ).toEqual({ ok: false, reason: 'ipc-error' });
   });
 });

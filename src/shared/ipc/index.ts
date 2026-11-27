@@ -60,9 +60,12 @@ export {
   playlistLoadResponseSchema,
   playlistSaveRequestSchema,
   playlistSaveResponseSchema,
+  selectedTrackIdSchema,
+  type SelectedTrackId,
   type PlaylistEntry,
   type PlaylistLoadRequest,
   type PlaylistLoadResponse,
   type PlaylistSaveRequest,
   type PlaylistSaveResponse,
 } from './playlist-store';
+export { resolveSelectedTrackId } from './selected-track';
