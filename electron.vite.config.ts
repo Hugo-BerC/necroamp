@@ -27,6 +27,9 @@ export default defineConfig({
     resolve: { alias },
     build: {
       outDir: 'out/main',
+      // music-metadata is ESM-only and the main bundle is CommonJS (ADR 0002 section 6), so it is
+      // bundled instead of required at runtime. Its transitive packages are bundled with it.
+      externalizeDeps: { exclude: ['music-metadata'] },
       rollupOptions: {
         input: { index: fileURLToPath(new URL('./src/main/index.ts', import.meta.url)) },
         output: { format: 'cjs', entryFileNames: '[name].js' },

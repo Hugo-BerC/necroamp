@@ -1,0 +1,22 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {"id": 1, "severity": "blocker", "owner": "desktop-engineer", "summary": "ESLint (10 errors) and tests/static/renderer-policy.test.ts (2 failures) still ban AudioContext/AnalyserNode/requestAnimationFrame across src/renderer; Block C code in src/renderer/audio/** violates the M0-M1 rule. Scope an allow-list to src/renderer/audio/**."},
+    {"id": 2, "severity": "blocker", "owner": "qa-engineer / audio-engineer", "summary": "e2e playback.spec.ts:131 fails: volume and mute now go through the master GainNode and element.volume stays 1; test expects 0.3."},
+    {"id": 3, "severity": "blocker", "owner": "frontend-engineer", "summary": "e2e lifecycle.spec.ts:116 fails at 800x600: a region is 12.14 px high (expected > 20)."},
+    {"id": 4, "severity": "blocker", "owner": "qa-engineer / frontend-engineer", "summary": "e2e lifecycle.spec.ts:157 fails: new eq-preset-select appears in tab order, expected list is stale."},
+    {"id": 5, "severity": "major", "owner": "qa-engineer", "summary": "Flaky e2e 'Render frame was disposed before the request completed' seen once on rerun."},
+    {"id": 6, "severity": "major", "owner": "qa-engineer", "summary": "No e2e for real AudioContext, EQ change/bypass or non-blank spectrum/waveform; graph tests use a fake AudioContext."},
+    {"id": 7, "severity": "minor", "owner": "audio-engineer", "summary": ".ogg verified only as Ogg FLAC; Ogg Vorbis decode unverified. No human listening performed."}
+  ],
+  "results": {
+    "typecheck": "pass",
+    "lint": "fail (10 errors)",
+    "formatCheck": "pass",
+    "tests": "2 failed, 1415 passed, 1 expected fail, 4 skipped (1422), 108 files",
+    "coverage": "Statements 99.3%, Branches 96.13%, Functions 99.16%, Lines 99.5%; no threshold violation reported",
+    "build": "pass",
+    "e2e": "3 failed, 73 passed"
+  },
+  "reviewDoc": "c:/Users/hberm/Desktop/necroamp/docs/testing/audio-engine-gate-c-review.md"
+}

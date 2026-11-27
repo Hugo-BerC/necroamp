@@ -1,4 +1,5 @@
 import { STRINGS } from '@renderer/app/strings/en';
+import { Artwork } from '@renderer/components/artwork';
 import { ControlButton } from '@renderer/components/control-button';
 import { RegionFrame } from '@renderer/components/region-frame';
 import { StatusText } from '@renderer/components/status-text';
@@ -13,6 +14,11 @@ export function LivePlayerView({ player }: { readonly player: LivePlayer }) {
     <RegionFrame id="player" titleId="player-heading" heading={STRINGS.regions.player}>
       <div className={styles.root}>
         <div data-part="now-playing" role="group" aria-label={STRINGS.player.nowPlaying}>
+          <Artwork
+            url={player.artworkUrl}
+            alt={STRINGS.player.artworkAlt(player.title)}
+            part="now-playing-artwork"
+          />
           <dl>
             <div data-part="now-playing-title">
               <dt>{STRINGS.player.titleLabel}</dt>
@@ -21,6 +27,10 @@ export function LivePlayerView({ player }: { readonly player: LivePlayer }) {
             <div data-part="now-playing-artist">
               <dt>{STRINGS.player.artistLabel}</dt>
               <dd>{player.artist}</dd>
+            </div>
+            <div data-part="now-playing-album">
+              <dt>{STRINGS.player.albumLabel}</dt>
+              <dd>{player.album}</dd>
             </div>
             <div data-part="now-playing-position">
               <dt>{STRINGS.player.positionLabel}</dt>
@@ -42,7 +52,11 @@ export function LivePlayerView({ player }: { readonly player: LivePlayer }) {
               label={control.label}
               part={`transport-${control.id}`}
               unavailable={control.unavailable}
-              describedBy={control.id === 'previous' || control.id === 'next' ? NOTE_ID : undefined}
+              describedBy={
+                !player.hasPlaylist && (control.id === 'previous' || control.id === 'next')
+                  ? NOTE_ID
+                  : undefined
+              }
               onActivate={control.onActivate}
             />
           ))}
@@ -84,9 +98,11 @@ export function LivePlayerView({ player }: { readonly player: LivePlayer }) {
             onActivate={player.toggleMute}
           />
         </div>
-        <p id={NOTE_ID} data-part="unavailable-note">
-          {STRINGS.player.playlistNote}
-        </p>
+        {player.hasPlaylist ? null : (
+          <p id={NOTE_ID} data-part="unavailable-note">
+            {STRINGS.player.playlistNote}
+          </p>
+        )}
         <StatusText tone={player.isError ? 'danger' : 'neutral'}>{player.message}</StatusText>
       </div>
     </RegionFrame>

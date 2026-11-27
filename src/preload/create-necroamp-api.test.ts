@@ -7,9 +7,10 @@ const VALID = { ok: true, data: { name: 'NecroAmp', version: '0.1.0', platform: 
 describe('createNecroampApi exposure boundary', () => {
   const api = createNecroampApi(() => Promise.resolve(VALID));
 
-  it('exposes exactly app.getInfo and library.openFiles', () => {
-    expect(Object.keys(api)).toEqual(['app', 'library']);
-    expect(Object.keys(api.library)).toEqual(['openFiles']);
+  it('exposes exactly the app, library and playlist methods', () => {
+    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist']);
+    expect(Object.keys(api.library)).toEqual(['openFiles', 'resolveTrack']);
+    expect(Object.keys(api.playlist)).toEqual(['load', 'save']);
     expect(Object.keys(api.app)).toEqual(['getInfo']);
     expect(typeof api.app.getInfo).toBe('function');
   });
@@ -18,6 +19,7 @@ describe('createNecroampApi exposure boundary', () => {
     expect(Object.isFrozen(api)).toBe(true);
     expect(Object.isFrozen(api.app)).toBe(true);
     expect(Object.isFrozen(api.library)).toBe(true);
+    expect(Object.isFrozen(api.playlist)).toBe(true);
   });
 
   it('leaks no ipcRenderer, invoke, send or on', () => {

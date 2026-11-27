@@ -48,7 +48,8 @@ const ipcLiteral = {
 const audioSyntax = {
   selector:
     'Identifier[name=/^(AudioContext|webkitAudioContext|OfflineAudioContext|AnalyserNode|requestAnimationFrame)$/]',
-  message: 'Audio and animation globals are not allowed in M0-M1 renderer code (R8.4, R8.7).',
+  message:
+    'Audio and animation globals are allowed only in src/renderer/audio (Audio Engine, ADR 0006).',
 };
 const networkGlobals = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource'].map((name) => ({
   name,
@@ -100,6 +101,13 @@ export default tseslint.config(
       ),
       'no-restricted-globals': ['error', ...networkGlobals],
       'no-restricted-syntax': ['error', openExternal, browserWindow, ipcLiteral, audioSyntax],
+    },
+  },
+  {
+    // Audio Engine: the Web Audio graph and the animation loop live only in the audio module.
+    files: ['src/renderer/audio/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': ['error', openExternal, browserWindow, ipcLiteral],
     },
   },
   {

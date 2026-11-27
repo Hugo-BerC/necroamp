@@ -201,10 +201,18 @@ describe('library:open-files dialog options and results', () => {
 });
 
 describe('preload API surface', () => {
-  it('exposes only app.getInfo and library.openFiles, with no generic sender', () => {
+  it('exposes only the typed app, library and playlist methods, with no generic sender', () => {
     const { api } = wire();
-    expect(Object.keys(api).sort()).toEqual(['app', 'library']);
-    expect(Object.keys(api.library)).toEqual(['openFiles']);
-    expect(JSON.stringify(Object.keys(api))).not.toMatch(/ipc|invoke|send|fs|path/i);
+    // Block B adds library.resolveTrack and playlist.load/save. Nothing else may appear.
+    expect(Object.keys(api).sort()).toEqual(['app', 'library', 'playlist']);
+    expect(Object.keys(api.library).sort()).toEqual(['openFiles', 'resolveTrack']);
+    expect(Object.keys(api.playlist).sort()).toEqual(['load', 'save']);
+    const everyName = JSON.stringify([
+      ...Object.keys(api),
+      ...Object.keys(api.app),
+      ...Object.keys(api.library),
+      ...Object.keys(api.playlist),
+    ]);
+    expect(everyName).not.toMatch(/ipc|invoke|send|fs|path/i);
   });
 });

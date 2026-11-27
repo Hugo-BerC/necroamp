@@ -1,0 +1,25 @@
+.frame {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--na-artwork-size, 3rem);
+  height: var(--na-artwork-size, 3rem);
+  overflow: hidden;
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface-inset);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  width: 40%;
+  height: 40%;
+  border: var(--na-border-width) solid var(--na-color-text-muted);
+  border-radius: 50%;
+}

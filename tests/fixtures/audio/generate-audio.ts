@@ -73,8 +73,10 @@ function crc16(bytes: readonly number[]): number {
 const FLAC_BLOCK = 4096;
 const FLAC_RATE = 44100;
 
-/** Mono 16-bit 44.1 kHz FLAC of verbatim frames (6 frames: 24576 samples, about 0.56 s, about 48 KB). */
-export function makeFlac(frames = 6): Uint8Array {
+export const FLAC_SAMPLE_RATE = FLAC_RATE;
+export const FLAC_BLOCK_SIZE = FLAC_BLOCK;
+/** The 34-byte STREAMINFO body: mono, 16-bit, 44.1 kHz, `frames` verbatim frames. */
+export function flacStreamInfo(frames: number): number[] {
   const total = BigInt(FLAC_BLOCK * frames);
   const info: number[] = [];
   const push16 = (v: number): void => void info.push((v >> 8) & 0xff, v & 0xff);
@@ -88,22 +90,31 @@ export function makeFlac(frames = 6): Uint8Array {
   const packed = (BigInt(FLAC_RATE) << 44n) | (0n << 41n) | (15n << 36n) | total;
   for (let shift = 56n; shift >= 0n; shift -= 8n) info.push(Number((packed >> shift) & 0xffn));
   for (let i = 0; i < 16; i += 1) info.push(0); // MD5 unknown
-  const bytes: number[] = [0x66, 0x4c, 0x61, 0x43, 0x80, 0, 0, info.length, ...info];
-  const samples = sineSamples(FLAC_BLOCK * frames, 0.4, FLAC_RATE);
-  for (let frame = 0; frame < frames; frame += 1) {
-    // 0xC9: block size 4096, sample rate 44.1 kHz coded in the header (FFmpeg's parser needs it for PTS).
-    const header = [0xff, 0xf8, 0xc9, 0x08, frame];
-    const body: number[] = [...header, crc8(header), 0x02];
-    for (let i = 0; i < FLAC_BLOCK; i += 1) {
-      const value = samples[frame * FLAC_BLOCK + i] as number;
-      body.push((value >> 8) & 0xff, value & 0xff);
-    }
-    const crc = crc16(body);
-    bytes.push(...body, crc >> 8, crc & 0xff);
+  return info;
+}
+/** One verbatim FLAC frame (`frame` < 128) of the 440 Hz tone, with CRC-8 and CRC-16. */
+export function flacFrame(frame: number, samples: Int16Array): number[] {
+  // 0xC9: block size 4096, sample rate 44.1 kHz coded in the header (FFmpeg's parser needs it for PTS).
+  const header = [0xff, 0xf8, 0xc9, 0x08, frame];
+  const body: number[] = [...header, crc8(header), 0x02];
+  for (let i = 0; i < FLAC_BLOCK; i += 1) {
+    const value = samples[frame * FLAC_BLOCK + i] as number;
+    body.push((value >> 8) & 0xff, value & 0xff);
   }
+  const crc = crc16(body);
+  return [...body, crc >> 8, crc & 0xff];
+}
+export function flacToneSamples(frames: number): Int16Array {
+  return sineSamples(FLAC_BLOCK * frames, 0.4, FLAC_RATE);
+}
+/** Mono 16-bit 44.1 kHz FLAC of verbatim frames (6 frames: 24576 samples, about 0.56 s, about 48 KB). */
+export function makeFlac(frames = 6): Uint8Array {
+  const info = flacStreamInfo(frames);
+  const bytes: number[] = [0x66, 0x4c, 0x61, 0x43, 0x80, 0, 0, info.length, ...info];
+  const samples = flacToneSamples(frames);
+  for (let frame = 0; frame < frames; frame += 1) bytes.push(...flacFrame(frame, samples));
   return Uint8Array.from(bytes);
 }
-
 /** MPEG-1 Layer III, 128 kbit/s, 44.1 kHz, mono-compatible silent frames (about 1.0 s). */
 export function makeMp3(frames = 39): Uint8Array {
   const frameLength = 417; // floor(144 * 128000 / 44100), no padding

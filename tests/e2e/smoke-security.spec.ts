@@ -12,13 +12,14 @@ const PLATFORM_LABEL: Record<string, string> = {
   linux: 'Linux',
 };
 // Independent oracle: the frozen production policy written out, not imported from source.
-// D-A6: media://art is deliberately absent from img-src until artwork support is implemented and
-// explicitly authorized. ADR 0006 item 7 still lists it and is stale on this point.
+// Block B: the one deliberate widening since Desktop Foundation is `media://art` in img-src (ADR 0006
+// item 7), for embedded album artwork only. D-A6 kept it out during Block A. `media://track` stays
+// confined to media-src and `media://art` to img-src.
 const PRODUCTION_CSP = [
   "default-src 'none'",
   "script-src 'self'",
   "style-src 'self'",
-  "img-src 'self'",
+  "img-src 'self' media://art",
   "font-src 'self'",
   "connect-src 'none'",
   "object-src 'none'",
@@ -128,20 +129,26 @@ test.describe('sandboxed preload and live web preferences', () => {
     });
   });
 
-  test('exposes exactly a frozen necroamp.app.getInfo and nothing else', async ({ page }) => {
+  test('exposes exactly the frozen typed bridge (app, library, playlist) and nothing else', async ({
+    page,
+  }) => {
     const shape = await page.evaluate(() => {
       const bridge = window.necroamp as unknown as Record<string, unknown>;
       const app = bridge['app'] as Record<string, unknown>;
       return {
         keys: Object.keys(bridge),
         appKeys: Object.keys(app),
-        frozen: Object.isFrozen(bridge) && Object.isFrozen(app),
+        frozen:
+          Object.isFrozen(bridge) &&
+          Object.isFrozen(app) &&
+          Object.isFrozen(bridge['library']) &&
+          Object.isFrozen(bridge['playlist']),
         getInfoType: typeof app['getInfo'],
         rawIpc: Object.keys(window).filter((k) => /ipc|invoke|send/i.test(k)),
       };
     });
     expect(shape).toEqual({
-      keys: ['app', 'library'],
+      keys: ['app', 'library', 'playlist'],
       appKeys: ['getInfo'],
       frozen: true,
       getInfoType: 'function',
@@ -179,7 +186,9 @@ test.describe('production CSP and app:// loading', () => {
     expect(headers.nosniff).toBe('nosniff');
   });
 
-  test('allows only self for images and only media://track for media', async ({ app }) => {
+  test('allows only self and media://art for images and only media://track for media', async ({
+    app,
+  }) => {
     const csp = await app.evaluate(async ({ net }) => {
       const res = await net.fetch('app://renderer/index.html');
       return res.headers.get('content-security-policy') ?? '';
@@ -188,12 +197,18 @@ test.describe('production CSP and app:// loading', () => {
       const directive = csp.split('; ').find((d) => d.startsWith(name + ' '));
       return directive === undefined ? [] : directive.split(' ').slice(1);
     };
-    expect(sources('img-src')).toEqual(["'self'"]);
+    expect(sources('img-src')).toEqual(["'self'", 'media://art']);
     expect(sources('media-src')).toEqual(['media://track']);
-    const img = sources('img-src').join(' ');
+    // Everything in img-src other than the two allowed sources must be absent, including every
+    // other media:// host and every network, data, blob and file source.
+    const img = sources('img-src')
+      .filter((source) => source !== "'self'" && source !== 'media://art')
+      .join(' ');
+    expect(img).toBe('');
+    const imgAll = sources('img-src').join(' ');
     for (const forbidden of [
-      'media://art',
-      'media:',
+      'media://track',
+      'media://*',
       'data:',
       'blob:',
       'http:',
@@ -201,11 +216,19 @@ test.describe('production CSP and app:// loading', () => {
       'file:',
       '*',
     ]) {
-      expect(img, forbidden).not.toContain(forbidden);
+      expect(imgAll, forbidden).not.toContain(forbidden);
     }
+    // media:// without a host would allow every media host.
+    expect(sources('img-src')).not.toContain('media:');
     expect(sources('media-src').join(' ')).not.toMatch(
       /media:\/\/art|blob:|data:|https?:|file:|\*/,
     );
+    // The widening must not leak into any other directive.
+    for (const directive of csp.split('; ')) {
+      const [name = '', ...values] = directive.split(' ');
+      if (name === 'img-src' || name === 'media-src') continue;
+      expect(values.join(' '), name).not.toContain('media:');
+    }
   });
   test('has a meta CSP without frame-ancestors, no unsafe-* and no inline script in the DOM source', async ({
     page,

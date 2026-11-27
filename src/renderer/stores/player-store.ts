@@ -19,11 +19,21 @@ export interface LibraryClient {
   readonly openFiles: (request: { readonly multiple: boolean }) => Promise<LibraryClientResult>;
 }
 
+/** How the last track finished. `seq` increases on every outcome so observers can detect repeats. */
+export interface PlayerOutcome {
+  readonly seq: number;
+  readonly kind: 'ended' | 'failed';
+  readonly trackId: string;
+}
+
 export interface PlayerState {
   readonly playback: PlaybackState;
   readonly track: TrackInfo | null;
   readonly openFailure: OpenFilesFailureReason | null;
+  readonly lastOutcome: PlayerOutcome | null;
   readonly open: () => Promise<void>;
+  /** Loads and plays a known track (used by the playlist). */
+  readonly playTrack: (track: TrackInfo) => Promise<void>;
   readonly play: () => Promise<void>;
   readonly pause: () => void;
   readonly stop: () => void;
@@ -83,9 +93,28 @@ export function createPlayerStore(engine: AudioEngine, client: LibraryClient): P
       }
     };
 
+    let outcomeSeq = 0;
     const unsubscribe = engine.subscribe((event) => {
+      const before = get().playback;
       dispatch(engineEventToPlayback(event));
+      const after = get().playback;
+      // Only a real transition counts, so stray late events cannot trigger auto-advance.
+      if (event.type === 'ended' && before.status === 'playing' && before.trackId !== null) {
+        outcomeSeq += 1;
+        set({ lastOutcome: { seq: outcomeSeq, kind: 'ended', trackId: before.trackId } });
+      } else if (event.type === 'error' && after.status === 'error' && after.trackId !== null) {
+        outcomeSeq += 1;
+        set({ lastOutcome: { seq: outcomeSeq, kind: 'failed', trackId: after.trackId } });
+      }
     });
+    const playTrack = async (track: TrackInfo): Promise<void> => {
+      set({ track });
+      loadGeneration += 1;
+      dispatch({ type: 'load', trackId: track.trackId });
+      engine.load(track.mediaUrl);
+      dispatch({ type: 'play' });
+      await startPlay();
+    };
     engine.setVolume(INITIAL_PLAYBACK_STATE.volume);
     engine.setMuted(INITIAL_PLAYBACK_STATE.muted);
 
@@ -93,6 +122,8 @@ export function createPlayerStore(engine: AudioEngine, client: LibraryClient): P
       playback: INITIAL_PLAYBACK_STATE,
       track: null,
       openFailure: null,
+      lastOutcome: null,
+      playTrack,
       open: async () => {
         const result = await client.openFiles({ multiple: false });
         if (!result.ok) {
@@ -104,12 +135,7 @@ export function createPlayerStore(engine: AudioEngine, client: LibraryClient): P
         if (track === undefined) {
           return; // The dialog was cancelled.
         }
-        set({ track });
-        loadGeneration += 1;
-        dispatch({ type: 'load', trackId: track.trackId });
-        engine.load(track.mediaUrl);
-        dispatch({ type: 'play' });
-        await startPlay();
+        await playTrack(track);
       },
       play: async () => {
         const { playback } = get();

@@ -1,6 +1,7 @@
 import type { Platform } from '@shared/ipc';
 import type { PlaybackErrorCode } from '@shared/audio/playback-state';
 import type { OpenFilesFailureReason } from '@renderer/stores/player-store';
+import type { RepeatMode } from '@renderer/stores/playlist-ops';
 import type { AppInfoFailureReason, AppInfoStatus } from '@renderer/stores/app-info-store';
 import type { RegionId } from '@renderer/components/region-frame';
 
@@ -53,6 +54,9 @@ export const STRINGS = {
     transport: 'Transport controls',
     titleLabel: 'Title',
     artistLabel: 'Artist',
+    albumLabel: 'Album',
+    artworkAlt: (title: string): string => `Artwork for ${title}`,
+    noAlbum: 'Unknown',
     positionLabel: 'Position',
     noTrack: 'No track loaded',
     noArtist: 'Unknown',
@@ -86,9 +90,45 @@ export const STRINGS = {
   },
   playlist: {
     empty: 'The playlist is empty. Playlists are not implemented in this phase.',
+    emptyLive: 'The playlist is empty. Use Add files to choose music.',
     addFiles: 'Add files',
     savePlaylist: 'Save playlist',
     listLabel: 'Playlist items',
+    actionsLabel: 'Playlist controls',
+    clear: 'Clear',
+    shuffle: 'Shuffle',
+    repeatValue: { off: 'Off', track: 'Track', playlist: 'Playlist' } satisfies Record<
+      RepeatMode,
+      string
+    >,
+    repeatLabel: (modeText: string): string => `Repeat: ${modeText}`,
+    loading: 'Loading the saved playlist',
+    itemCount: (count: number): string => (count === 1 ? '1 track' : `${String(count)} tracks`),
+    up: 'Up',
+    down: 'Down',
+    removeLabel: 'Remove',
+    play: (title: string): string => `Play ${title}`,
+    moveUp: (title: string): string => `Move ${title} up`,
+    moveDown: (title: string): string => `Move ${title} down`,
+    remove: (title: string): string => `Remove ${title}`,
+    nowPlayingMarker: 'Now playing',
+    missing: 'File missing',
+    unknownArtist: 'Unknown artist',
+    unknownAlbum: 'Unknown album',
+    noArtwork: 'No artwork',
+    notices: {
+      'load-failed': 'The saved playlist could not be loaded.',
+      'save-failed': 'The playlist could not be saved.',
+      'list-full': 'The playlist is full. Some files were not added.',
+      'track-unavailable': 'This file is missing. It may have been moved or deleted.',
+      'all-failed': 'None of the tracks could be played.',
+    },
+    openFailures: {
+      unavailable: 'The application bridge is unavailable, so files cannot be added.',
+      rejected: 'The application did not respond to the add request.',
+      'invalid-response': 'The application returned an unexpected response.',
+      'ipc-error': 'The files could not be added.',
+    } satisfies Record<OpenFilesFailureReason, string>,
   },
   equalizer: {
     bands: 'Equalizer bands',
@@ -106,10 +146,19 @@ export const STRINGS = {
       '16 kHz',
     ],
     unavailable: 'Equalizer is not implemented in this phase. No audio is processed.',
+    controls: 'Equalizer controls',
+    preamp: 'Preamp',
+    bypass: 'Bypass equalizer',
+    preset: 'Preset',
+    custom: 'Custom',
+    bandSlider: (frequency: string): string => `${frequency} gain`,
+    gainText: (db: number): string => `${db > 0 ? '+' : ''}${db} dB`,
   },
   visualizer: {
     spectrum: 'Spectrum',
     waveform: 'Waveform',
+    spectrumDescription: 'Frequency spectrum of the audio being played',
+    waveformDescription: 'Waveform of the audio being played',
     unavailable: 'Visualizations are not implemented in this phase. There is no audio to show.',
   },
   skins: {

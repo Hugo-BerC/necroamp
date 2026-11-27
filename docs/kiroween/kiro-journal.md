@@ -263,3 +263,30 @@ Incident record, correction of false approval claims, hook evidence, E-ESM-1 tec
 A coding subagent in a workflow step, directed by the orchestrator. No custom agent, no permission change.
 ### Notable decision
 The merge was not reverted. The human asked for a limited reconciliation and a PR that is not merged automatically.
+
+## 17. Audio Engine (branch `feature/audio-engine`)
+
+### What was done
+
+- Spec: `.kiro/specs/audio-engine/` (requirements, design, tasks), written first and kept concise. ADR 0006 records the media protocol and audio pipeline choice (provisional, human review H.1 open).
+- Block A, core playback: `media://track/<uuid>` protocol with Range support, `library:open-files` with the native dialog in main, one hidden `HTMLAudioElement`, player store, transport, seek, time, volume, mute, error states. Committed as 85ba290.
+- Block B, playlist and metadata: `music-metadata` 13.0.1 in main, `media://art/<uuid>` for embedded artwork (PNG, JPEG, WebP by magic bytes), `playlist:load` and `playlist:save` with atomic, Zod-validated persistence in `userData/playlist.json`, playlist store with shuffle, repeat, reorder and remove.
+- Block C, DSP and visualization: native Web Audio graph (source, ten biquads, preamp, master gain, analyser), bypass, presets, spectrum and waveform canvases on `requestAnimationFrame` with a visibility pause. No AudioWorklet (spec C8).
+- Final step: fixed the Gate C blockers. ESLint and the static renderer policy now allow `AudioContext`, `AnalyserNode` and `requestAnimationFrame` only in `src/renderer/audio/**`; the ban stays for the rest of the renderer. The player row no longer collapses at 800x600 (grid rows `min-content` instead of `auto`). The Tab-order E2E now includes the preset `select`. The volume and mute E2E now observes the master gain through the spectrum canvas, because Block C moved volume from the element to the graph.
+
+### Kiro features used
+
+- **Spec**: `.kiro/specs/audio-engine/`.
+- **Custom agents** (evidence: review and notes files): `qa-engineer` (Gate B and Gate C reviews in `docs/testing/`), `security-reviewer` (`docs/security/audio-engine-review.md`), `audio-engineer` (`docs/audio/dsp-notes.md`), with `desktop-engineer` and `frontend-engineer` named as owners of fixes.
+- **Skills**: `audio-processing`, `electron-security`, `testing-strategy`, `typescript-standards`.
+- **Workflow**: multi-step run `wf_fd4f557bcef2ac47` (implementation, gates, security review, finalization). Source: Prompt.
+
+### Decisions
+
+- Volume and mute go to the master `GainNode` once the graph exists; before that, to the element. Recorded in `src/renderer/audio/audio-engine.ts`.
+- Security review AE-01 to AE-05 are Low or Info. They are recorded as limitations in the PR body, not fixed in this branch.
+- EQ settings persistence (spec C4) is not wired: no `settings:*` IPC channel exists yet. EQ resets to Flat on restart.
+
+### Result
+
+Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check, build exit 0. Vitest 108 files, 1417 passed, 1 expected fail (defect D-B1), 4 skipped (symlink privilege). Coverage statements 99.3, branches 96.13, functions 99.16, lines 99.5, thresholds unchanged. test:e2e 76 passed. All playback checks are automated; no human listening was done. Human gates H.1 to H.4 stay open.

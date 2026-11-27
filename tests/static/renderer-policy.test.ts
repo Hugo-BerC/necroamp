@@ -40,7 +40,12 @@ describe('renderer source policy', () => {
     ['dynamic code', /\b(eval\s*\(|new\s+Function\s*\()/],
     ['direct bridge access', /\bipcRenderer\b/],
   ] as const)('contains no %s', (_label, pattern) => {
-    const offenders = sources.filter((f) => pattern.test(stripComments(read(f)))).map(name);
+    // Audio Engine (ADR 0006): Web Audio and the animation loop are confined to src/renderer/audio.
+    const audioOnly = _label === 'AudioContext or analyser' || _label === 'requestAnimationFrame';
+    const scope = audioOnly
+      ? sources.filter((f) => !name(f).startsWith('src/renderer/audio/'))
+      : sources;
+    const offenders = scope.filter((f) => pattern.test(stripComments(read(f)))).map(name);
     expect(offenders).toEqual([]);
   });
 

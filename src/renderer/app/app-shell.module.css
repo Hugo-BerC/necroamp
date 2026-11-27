@@ -61,7 +61,8 @@
 .regions {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(min-content, 1fr) minmax(min-content, 1fr) auto;
+  /* min-content, not auto: frames have min-height 0, so an auto row could collapse to 0. */
+  grid-template-rows: min-content minmax(min-content, 1fr) minmax(min-content, 1fr) min-content;
   grid-template-areas:
     'player        player        player'
     'playlist      visualization equalizer'
@@ -101,7 +102,7 @@
 @media (max-width: 899px) {
   .regions {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto repeat(3, minmax(min-content, 1fr)) auto;
+    grid-template-rows: min-content repeat(3, minmax(min-content, 1fr)) min-content;
     grid-template-areas:
       'player        player'
       'playlist      visualization'

@@ -22,3 +22,97 @@
 .root [data-part='unavailable-note'] {
   color: var(--na-color-text-muted);
 }
+
+.root [data-part='playlist-count'] {
+  color: var(--na-color-text-muted);
+}
+
+.root ul[data-part='playlist-items'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--na-space-2);
+  max-height: 24rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.root li[data-part='playlist-item'] {
+  display: flex;
+  align-items: center;
+  gap: var(--na-space-3);
+  padding: var(--na-space-2) var(--na-space-3);
+  border: var(--na-border-width) solid var(--na-color-border-subtle);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface-inset);
+  /* Keeps a 5000 item list cheap to render. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.5rem;
+}
+
+/* The current item is marked by a thick accent border and a text label, not by color alone. */
+.root li[data-current='true'] {
+  border-color: var(--na-color-accent);
+  border-width: var(--na-focus-ring-width);
+}
+
+.root li[data-unavailable='true'] [data-part='track-play'] {
+  color: var(--na-color-text-muted);
+  text-decoration: line-through;
+}
+
+.root [data-part='track-info'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--na-space-3);
+  min-width: 0;
+}
+
+.root [data-part='track-play'] {
+  max-width: 100%;
+  padding: var(--na-space-1) 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--na-color-text);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.root [data-part='track-artist'],
+.root [data-part='track-album'] {
+  color: var(--na-color-text-muted);
+  font-size: var(--na-font-size-2);
+}
+
+.root [data-part='track-marker'] {
+  color: var(--na-color-accent);
+  font-size: var(--na-font-size-2);
+}
+
+.root [data-part='track-missing'] {
+  color: var(--na-color-warning);
+  font-size: var(--na-font-size-2);
+}
+
+.root [data-part='track-duration'] {
+  color: var(--na-color-text-muted);
+  font-family: var(--na-font-family-mono);
+}
+
+.root [data-part='track-actions'] {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--na-space-2);
+}
+
+.root button:focus-visible {
+  outline: var(--na-focus-ring-width) solid var(--na-color-focus);
+  outline-offset: var(--na-focus-ring-offset);
+}

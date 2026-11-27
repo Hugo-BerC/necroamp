@@ -30,3 +30,14 @@ export const openFilesResponseSchema = ipcResultSchema(
   z.strictObject({ tracks: z.array(trackInfoSchema).max(MAX_TRACKS_PER_REQUEST) }),
 );
 export type OpenFilesResponse = z.infer<typeof openFilesResponseSchema>;
+
+/** `library:resolve-track`: the renderer names a token it already holds, never a path. */
+export const resolveTrackRequestSchema = z.tuple([z.strictObject({ trackId: z.uuid() })]);
+export type ResolveTrackRequest = z.infer<typeof resolveTrackRequestSchema>;
+export const resolveTrackResponseSchema = ipcResultSchema(
+  z.union([
+    z.strictObject({ track: trackInfoSchema }),
+    z.strictObject({ unavailable: z.literal(true) }),
+  ]),
+);
+export type ResolveTrackResponse = z.infer<typeof resolveTrackResponseSchema>;

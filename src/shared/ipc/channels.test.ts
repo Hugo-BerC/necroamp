@@ -6,6 +6,9 @@ describe('IPC_CHANNELS', () => {
     expect(IPC_CHANNELS).toEqual({
       appGetInfo: 'app:get-info',
       libraryOpenFiles: 'library:open-files',
+      libraryResolveTrack: 'library:resolve-track',
+      playlistLoad: 'playlist:load',
+      playlistSave: 'playlist:save',
     });
   });
 

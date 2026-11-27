@@ -40,6 +40,11 @@ export default defineConfig({
         'src/main/security/csp.ts': { lines: 95, branches: 95 },
         'src/main/protocol/media-protocol.ts': { lines: 95, branches: 95 },
         'src/main/library/media-registry.ts': { lines: 95, branches: 95 },
+        // Block B: artwork gate, persistence parser and pure playlist rules.
+        'src/main/library/artwork.ts': { lines: 95, branches: 95 },
+        'src/main/library/playlist-persistence.ts': { lines: 95, branches: 95 },
+        'src/main/library/text.ts': { lines: 95, branches: 95 },
+        'src/renderer/stores/playlist-ops.ts': { lines: 95, branches: 95 },
       },
     },
     projects: [

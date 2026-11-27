@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useStore } from 'zustand';
 import { formatTime } from '@shared/audio/time-format';
 import { STRINGS } from '@renderer/app/strings/en';
 import type { PlayerStore } from '@renderer/stores/player-store';
+import type { PlaylistStore } from '@renderer/stores/playlist-store';
 import type { TransportControlId } from './use-player';
 
 export interface LiveTransportControl {
@@ -13,7 +14,30 @@ export interface LiveTransportControl {
   readonly onActivate: () => void;
 }
 
+const NO_SUBSCRIPTION = (): (() => void) => () => undefined;
+
+interface PlaylistNav {
+  readonly itemCount: number;
+  readonly hasCurrent: boolean;
+}
+
+/** Reads the optional playlist store. Without one, navigation stays unavailable. */
+function usePlaylistNav(playlist: PlaylistStore | null): PlaylistNav {
+  const itemCount = useSyncExternalStore(
+    playlist === null ? NO_SUBSCRIPTION : playlist.subscribe,
+    () => playlist?.getState().items.length ?? 0,
+  );
+  const hasCurrent = useSyncExternalStore(
+    playlist === null ? NO_SUBSCRIPTION : playlist.subscribe,
+    () => playlist?.getState().current !== null && playlist?.getState().current !== undefined,
+  );
+  return { itemCount, hasCurrent };
+}
+
 export interface LivePlayer {
+  readonly album: string;
+  readonly artworkUrl: string | null;
+  readonly hasPlaylist: boolean;
   readonly open: () => void;
   readonly controls: readonly LiveTransportControl[];
   readonly title: string;
@@ -32,7 +56,11 @@ export interface LivePlayer {
 }
 
 /** Headless behavior for the live player. Every action goes through the store. */
-export function useLivePlayer(store: PlayerStore): LivePlayer {
+export function useLivePlayer(
+  store: PlayerStore,
+  playlist: PlaylistStore | null = null,
+): LivePlayer {
+  const { itemCount, hasCurrent } = usePlaylistNav(playlist);
   const playback = useStore(store, (s) => s.playback);
   const track = useStore(store, (s) => s.track);
   const openFailure = useStore(store, (s) => s.openFailure);
@@ -45,8 +73,10 @@ export function useLivePlayer(store: PlayerStore): LivePlayer {
       {
         id: 'previous',
         label: STRINGS.player.controls.previous,
-        unavailable: true,
-        onActivate: () => undefined,
+        unavailable: playlist === null || !hasCurrent,
+        onActivate: () => {
+          void playlist?.getState().previous();
+        },
       },
       {
         id: 'play',
@@ -71,8 +101,10 @@ export function useLivePlayer(store: PlayerStore): LivePlayer {
       {
         id: 'next',
         label: STRINGS.player.controls.next,
-        unavailable: true,
-        onActivate: () => undefined,
+        unavailable: playlist === null || itemCount === 0,
+        onActivate: () => {
+          void playlist?.getState().next();
+        },
       },
     ];
     const message =
@@ -86,6 +118,9 @@ export function useLivePlayer(store: PlayerStore): LivePlayer {
         void open();
       },
       controls,
+      hasPlaylist: playlist !== null,
+      album: track === null || track.album === '' ? STRINGS.player.noAlbum : track.album,
+      artworkUrl: track?.artworkUrl ?? null,
       title: track?.title ?? STRINGS.player.noTrack,
       artist: track === null || track.artist === '' ? STRINGS.player.noArtist : track.artist,
       elapsed: formatTime(hasTrack ? playback.positionSec : null),
@@ -102,5 +137,19 @@ export function useLivePlayer(store: PlayerStore): LivePlayer {
       message,
       isError: message !== '',
     };
-  }, [playback, track, openFailure, open, play, pause, stop, seek, setVolume, toggleMute]);
+  }, [
+    playback,
+    track,
+    openFailure,
+    open,
+    play,
+    pause,
+    stop,
+    seek,
+    setVolume,
+    toggleMute,
+    playlist,
+    itemCount,
+    hasCurrent,
+  ]);
 }

@@ -71,3 +71,14 @@
 .root input[type='range']:disabled {
   cursor: not-allowed;
 }
+
+.root [data-part='now-playing'] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--na-space-3);
+}
+
+.root [data-part='now-playing'] dl {
+  flex: 1 1 auto;
+  min-width: 0;
+}

@@ -15,7 +15,7 @@ const PRODUCTION_DIRECTIVES: readonly Directive[] = Object.freeze([
   ['default-src', ["'none'"]],
   ['script-src', ["'self'"]],
   ['style-src', ["'self'"]],
-  ['img-src', ["'self'"]],
+  ['img-src', ["'self'", 'media://art']],
   ['font-src', ["'self'"]],
   ['connect-src', ["'none'"]],
   ['object-src', ["'none'"]],

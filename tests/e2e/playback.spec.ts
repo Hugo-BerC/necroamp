@@ -9,6 +9,7 @@ import {
   makeOggContainerOnly,
   makeWav,
 } from '../fixtures/audio/generate-audio';
+import { makeOggFlac, makeToneMp3 } from '../fixtures/audio/generate-tagged';
 import { expect, test } from './fixtures/launch';
 
 // Audio Engine Block A: automated playback verification against the production build.
@@ -43,8 +44,11 @@ test.beforeAll(() => {
     files.set(name, full);
   };
   write('tone.wav', makeWav(3));
+  write('long-tone.wav', makeWav(30));
   write('silence.mp3', makeMp3());
   write('tone.flac', makeFlac());
+  write('tone.mp3', makeToneMp3());
+  write('tone.ogg', makeOggFlac());
   write('container-only.ogg', makeOggContainerOnly());
   write('garbage.mp3', makeGarbage());
 });
@@ -79,6 +83,20 @@ async function source(page: Page): Promise<Source['state']> {
   }, AUDIO);
 }
 
+/** Counts spectrum canvas pixels that differ from the background (drawn bars). */
+async function litSpectrumPixels(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('[data-part="spectrum-canvas"]');
+    const ctx = canvas?.getContext('2d');
+    if (canvas == null || ctx == null) throw new Error('spectrum canvas missing');
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let lit = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] !== data[0] || data[i + 1] !== data[1] || data[i + 2] !== data[2]) lit += 1;
+    }
+    return lit;
+  });
+}
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 
 test.describe('local playback (automated, not human listening)', () => {
@@ -129,18 +147,29 @@ test.describe('local playback (automated, not human listening)', () => {
     app,
     page,
   }) => {
-    await stubDialog(app, files.get('tone.wav') as string);
+    // Block C: once the Web Audio graph exists (built on the play gesture), volume and mute
+    // drive the master gain, which sits before the analyser. The element stays at unity, and
+    // the effect is observed through the spectrum canvas, which is drawn from the analyser.
+    await stubDialog(app, files.get('long-tone.wav') as string);
     await button(page, 'Open').click();
+    await expect.poll(async () => (await source(page)).paused).toBe(false);
+    const lit = () => litSpectrumPixels(page);
+    await expect.poll(lit, { timeout: 10_000 }).toBeGreaterThan(0);
     await page.locator('#player-volume').fill('30');
-    await expect.poll(async () => (await source(page)).volume).toBeCloseTo(0.3, 2);
+    await expect(page.locator('#player-volume')).toHaveValue('30');
+    expect(await source(page)).toMatchObject({ volume: 1, muted: false });
+    await expect.poll(lit, { timeout: 10_000 }).toBeGreaterThan(0);
     await button(page, 'Mute').click();
     await expect(button(page, 'Mute')).toHaveAttribute('aria-pressed', 'true');
-    expect(await source(page)).toMatchObject({ muted: true });
-    expect((await source(page)).volume).toBeCloseTo(0.3, 2);
+    await expect.poll(lit, { timeout: 10_000 }).toBe(0);
+    // The volume setting is kept while muted.
+    await expect(page.locator('#player-volume')).toHaveValue('30');
+    expect((await source(page)).paused).toBe(false);
     await button(page, 'Mute').click();
-    expect(await source(page)).toMatchObject({ muted: false });
+    await expect(button(page, 'Mute')).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(lit, { timeout: 10_000 }).toBeGreaterThan(0);
     await page.locator('#player-volume').fill('0');
-    await expect.poll(async () => (await source(page)).volume).toBe(0);
+    await expect.poll(lit, { timeout: 10_000 }).toBe(0);
   });
 
   test('plays an MP3 of silent frames without a media error', async ({ app, page }) => {
@@ -153,6 +182,34 @@ test.describe('local playback (automated, not human listening)', () => {
     await expect.poll(async () => (await source(page)).duration).toBeGreaterThan(0.5);
   });
 
+  test('plays an MP3 that carries a real signal, reports its duration and advances', async ({
+    app,
+    page,
+  }) => {
+    await stubDialog(app, files.get('tone.mp3') as string);
+    await button(page, 'Open').click();
+    await expect
+      .poll(async () => (await source(page)).duration, { timeout: 15_000 })
+      .toBeCloseTo(1.02, 1);
+    expect((await source(page)).errorCode).toBeNull();
+    await expect
+      .poll(async () => (await source(page)).currentTime, { timeout: 15_000 })
+      .toBeGreaterThan(0.1);
+  });
+  test('plays an .ogg file (Ogg-encapsulated FLAC, not Vorbis) and reports its duration', async ({
+    app,
+    page,
+  }) => {
+    await stubDialog(app, files.get('tone.ogg') as string);
+    await button(page, 'Open').click();
+    await expect
+      .poll(async () => (await source(page)).duration, { timeout: 15_000 })
+      .toBeCloseTo(0.557, 1);
+    expect((await source(page)).errorCode).toBeNull();
+    await expect
+      .poll(async () => (await source(page)).currentTime, { timeout: 15_000 })
+      .toBeGreaterThan(0.1);
+  });
   test('plays a FLAC without a media error and reports its duration', async ({ app, page }) => {
     await stubDialog(app, files.get('tone.flac') as string);
     await button(page, 'Open').click();
@@ -233,17 +290,25 @@ test.describe('media:// boundaries in the real renderer', () => {
     expect(result).toMatch(/^error:/);
   });
 
-  test('the bridge exposes only library.openFiles beside app.getInfo', async ({ page }) => {
+  test('the bridge exposes only the typed library and playlist methods, frozen', async ({
+    page,
+  }) => {
     const shape = await page.evaluate(() => {
       const bridge = window.necroamp as unknown as Record<string, Record<string, unknown>>;
       return {
-        libraryKeys: Object.keys(bridge['library'] ?? {}),
-        frozen: Object.isFrozen(bridge['library']),
+        top: Object.keys(bridge).sort(),
+        libraryKeys: Object.keys(bridge['library'] ?? {}).sort(),
+        playlistKeys: Object.keys(bridge['playlist'] ?? {}).sort(),
+        frozen: [bridge['library'], bridge['playlist']].map((o) => Object.isFrozen(o)),
       };
     });
-    expect(shape).toEqual({ libraryKeys: ['openFiles'], frozen: true });
+    expect(shape).toEqual({
+      top: ['app', 'library', 'playlist'],
+      libraryKeys: ['openFiles', 'resolveTrack'],
+      playlistKeys: ['load', 'save'],
+      frozen: [true, true],
+    });
   });
-
   test('closing the app releases the media element (no leftover audio on dispose)', async ({
     page,
   }) => {

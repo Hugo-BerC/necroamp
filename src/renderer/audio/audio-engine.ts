@@ -1,4 +1,5 @@
 import type { PlaybackErrorCode } from '@shared/audio/playback-state';
+import { createAudioProcessing, type AudioProcessing } from './audio-processing';
 
 /** Events the engine emits. The store feeds them to the pure playback reducer. */
 export type AudioEngineEvent =
@@ -29,6 +30,14 @@ export interface AudioEngine {
   readonly dispose: () => void;
 }
 
+/**
+ * DOM engine: playback port plus the independent audio-processing port. The player store
+ * only needs AudioEngine; the equalizer and visualizer use processing.
+ */
+export interface DomAudioEngine extends AudioEngine {
+  readonly processing: AudioProcessing;
+}
+
 // HTMLMediaElement error codes (MediaError.MEDIA_ERR_*).
 const MEDIA_ERR_ABORTED = 1;
 const MEDIA_ERR_NETWORK = 2;
@@ -56,7 +65,10 @@ export function mapMediaErrorCode(code: number | undefined): PlaybackErrorCode |
  * media pipeline, not to React. The element is tagged `data-part="audio-source"` so tests
  * can observe it. `crossOrigin` is set so Block C can attach a MediaElementAudioSourceNode.
  */
-export function createDomAudioEngine(doc: Document = document): AudioEngine {
+export function createDomAudioEngine(
+  doc: Document = document,
+  createContext?: () => AudioContext,
+): DomAudioEngine {
   const element = doc.createElement('audio');
   element.crossOrigin = 'anonymous';
   element.preload = 'metadata';
@@ -64,8 +76,26 @@ export function createDomAudioEngine(doc: Document = document): AudioEngine {
   element.setAttribute('data-part', 'audio-source');
   doc.body.appendChild(element);
 
+  const processing = createAudioProcessing({
+    element,
+    doc,
+    ...(createContext === undefined ? {} : { createContext }),
+  });
   const listeners = new Set<AudioEngineListener>();
   let disposed = false;
+  let volume = 1;
+  let muted = false;
+
+  /** Volume and mute go through the master gain once the graph exists, otherwise the element. */
+  const applyOutput = (): void => {
+    if (processing.setMasterGain(muted ? 0 : volume)) {
+      element.volume = 1;
+      element.muted = false;
+    } else {
+      element.volume = volume;
+      element.muted = muted;
+    }
+  };
 
   const emit = (event: AudioEngineEvent): void => {
     for (const listener of [...listeners]) {
@@ -97,12 +127,25 @@ export function createDomAudioEngine(doc: Document = document): AudioEngine {
   element.addEventListener('ended', onEnded);
   element.addEventListener('error', onError);
 
-  return {
+  const onPageHide = (): void => {
+    api.dispose();
+  };
+  doc.defaultView?.addEventListener('pagehide', onPageHide);
+
+  const api: DomAudioEngine = {
+    processing,
     load: (url) => {
       element.src = url;
       element.load();
     },
     play: async () => {
+      if (disposed) {
+        return;
+      }
+      // Called from the play gesture: builds the graph once and resumes the context.
+      if (await processing.ensureReady()) {
+        applyOutput();
+      }
       if (!disposed) {
         await element.play();
       }
@@ -119,11 +162,13 @@ export function createDomAudioEngine(doc: Document = document): AudioEngine {
         element.currentTime = positionSec;
       }
     },
-    setVolume: (volume) => {
-      element.volume = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 0));
+    setVolume: (next) => {
+      volume = Math.min(1, Math.max(0, Number.isFinite(next) ? next : 0));
+      applyOutput();
     },
-    setMuted: (muted) => {
-      element.muted = muted;
+    setMuted: (next) => {
+      muted = next;
+      applyOutput();
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -136,6 +181,8 @@ export function createDomAudioEngine(doc: Document = document): AudioEngine {
         return;
       }
       disposed = true;
+      doc.defaultView?.removeEventListener('pagehide', onPageHide);
+      processing.dispose();
       element.removeEventListener('loadedmetadata', onMetadata);
       element.removeEventListener('durationchange', onMetadata);
       element.removeEventListener('timeupdate', onTime);
@@ -149,4 +196,5 @@ export function createDomAudioEngine(doc: Document = document): AudioEngine {
       listeners.clear();
     },
   };
+  return api;
 }

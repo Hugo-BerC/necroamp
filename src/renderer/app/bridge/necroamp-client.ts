@@ -1,6 +1,16 @@
-import { appInfoResponseSchema, openFilesResponseSchema } from '@shared/ipc';
+import {
+  appInfoResponseSchema,
+  openFilesResponseSchema,
+  playlistLoadResponseSchema,
+  playlistSaveResponseSchema,
+} from '@shared/ipc';
 import type { AppInfoClient, AppInfoClientResult } from '@renderer/stores/app-info-store';
 import type { LibraryClient, LibraryClientResult } from '@renderer/stores/player-store';
+import type {
+  PlaylistLoadResult,
+  PlaylistPersistenceClient,
+  PlaylistSaveResult,
+} from '@renderer/stores/playlist-store';
 
 /**
  * The only module that reads `window.necroamp` (R4.9). The host is a parameter so tests
@@ -92,6 +102,60 @@ export function createLibraryClient(host: BridgeHost): LibraryClient {
         return { ok: false, reason: 'ipc-error' };
       }
       return { ok: true, data: parsed.data.data };
+    },
+  };
+}
+
+function readPlaylistNamespace(host: BridgeHost): Readonly<Record<string, unknown>> | undefined {
+  const bridge = host.necroamp;
+  if (!isRecord(bridge)) {
+    return undefined;
+  }
+  const playlist = bridge['playlist'];
+  return isRecord(playlist) ? playlist : undefined;
+}
+
+/** Persistence adapter for the playlist. Same trust model: the bridge is unknown, replies are parsed. */
+export function createPlaylistClient(host: BridgeHost): PlaylistPersistenceClient {
+  return {
+    load: async (): Promise<PlaylistLoadResult> => {
+      const playlist = readPlaylistNamespace(host);
+      if (playlist === undefined || typeof playlist['load'] !== 'function') {
+        return { ok: false, reason: 'unavailable' };
+      }
+      let raw: unknown;
+      try {
+        // Call through the namespace object so 	his is preserved. The result is parsed below.
+        raw = await (playlist['load'] as () => Promise<unknown>)();
+      } catch {
+        return { ok: false, reason: 'rejected' };
+      }
+      const parsed = playlistLoadResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        return { ok: false, reason: 'invalid-response' };
+      }
+      return parsed.data.ok
+        ? { ok: true, items: parsed.data.data.items }
+        : { ok: false, reason: 'ipc-error' };
+    },
+    save: async (trackIds): Promise<PlaylistSaveResult> => {
+      const playlist = readPlaylistNamespace(host);
+      if (playlist === undefined || typeof playlist['save'] !== 'function') {
+        return { ok: false, reason: 'unavailable' };
+      }
+      let raw: unknown;
+      try {
+        raw = await (playlist['save'] as (request: unknown) => Promise<unknown>)({
+          items: trackIds.map((trackId) => ({ trackId })),
+        });
+      } catch {
+        return { ok: false, reason: 'rejected' };
+      }
+      const parsed = playlistSaveResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        return { ok: false, reason: 'invalid-response' };
+      }
+      return parsed.data.ok ? { ok: true } : { ok: false, reason: 'ipc-error' };
     },
   };
 }

@@ -7,9 +7,12 @@ import {
   type OpenFilesResponse,
   type TrackInfo,
 } from '@shared/ipc';
+import type { ArtworkStore } from '../library/artwork';
 import type { MediaRegistry } from '../library/media-registry';
+import type { MetadataReader } from '../library/metadata';
+import { createTrackFactory } from '../library/track-info';
 import type { Logger } from '../logging/logger';
-import { AUDIO_EXTENSIONS, audioTypeFor } from '../protocol/media-handler';
+import { AUDIO_EXTENSIONS } from '../protocol/media-handler';
 import type { SenderEventLike } from '../security/sender-validation';
 import { registerHandler, type IpcMainLike } from './register-handler';
 
@@ -28,25 +31,17 @@ export interface LibraryHandlerDeps {
   readonly fs: { stat(path: string): Promise<{ isFile(): boolean }> };
   readonly path: { basename(path: string, suffix?: string): string; extname(path: string): string };
   readonly registry: Pick<MediaRegistry, 'issue'>;
+  /** Reads tags and duration in main. Optional so authorization can be tested alone. */
+  readonly metadata?: MetadataReader;
+  readonly artwork?: Pick<ArtworkStore, 'put'>;
   readonly isTrustedSender: (event: SenderEventLike) => boolean;
   readonly log: Logger;
 }
 
-function isControl(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return code < 0x20 || code === 0x7f;
-}
-
-function clean(value: string, max: number): string {
-  return Array.from(value)
-    .filter((char) => !isControl(char))
-    .join('')
-    .slice(0, max);
-}
-
 /** Handler for `library:open-files`. Paths stay in main; the renderer gets tokens only. */
 export function registerLibraryHandlers(deps: LibraryHandlerDeps): () => void {
-  const { ipcMain, showOpenDialog, fs, path, registry, isTrustedSender, log } = deps;
+  const { ipcMain, showOpenDialog, isTrustedSender, log } = deps;
+  const factory = createTrackFactory(deps);
   return registerHandler({
     ipcMain,
     channel: IPC_CHANNELS.libraryOpenFiles,
@@ -69,30 +64,9 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): () => void {
       if (selection.canceled) return { ok: true, data: { tracks: [] } };
       const tracks: TrackInfo[] = [];
       for (const filePath of selection.filePaths.slice(0, MAX_TRACKS_PER_REQUEST)) {
-        if (typeof filePath !== 'string') continue;
-        const extension = path.extname(filePath);
-        if (audioTypeFor(extension) === undefined) continue;
-        try {
-          if (!(await fs.stat(filePath)).isFile()) continue;
-        } catch {
-          continue;
-        }
-        const token = registry.issue(filePath);
-        if (token === null) break;
-        const fileName = clean(path.basename(filePath), 255);
-        const title = clean(path.basename(filePath, extension), 256);
-        if (fileName === '' || title === '') continue;
-        tracks.push({
-          trackId: token,
-          mediaUrl: `media://track/${token}`,
-          fileName,
-          title,
-          artist: 'Unknown artist',
-          album: '',
-          durationSec: null,
-          artworkUrl: null,
-          available: true,
-        });
+        const track = await factory.fromPath(filePath);
+        if (track === 'full') break;
+        if (track !== null) tracks.push(track);
       }
       return { ok: true, data: { tracks } };
     },

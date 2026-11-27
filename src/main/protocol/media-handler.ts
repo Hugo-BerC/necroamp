@@ -1,10 +1,11 @@
 import { MEDIA_SCHEME } from '../constants';
 import type { Logger } from '../logging/logger';
+import type { ArtworkStore } from '../library/artwork';
 import type { MediaRegistry } from '../library/media-registry';
 import type { ProtocolHandlerApi, SchemeRegistrar } from './app-protocol';
 import { parseMediaUrl, parseRange } from './media-protocol';
 
-/** Extension allow list for `media://track` (ADR 0006 item 5). */
+/** Extension allow list for `media://track` (ADR 0006 item 5). Artwork types come from magic bytes. */
 const AUDIO_TYPES: Readonly<Record<string, string>> = Object.freeze({
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
@@ -47,6 +48,8 @@ export interface MediaFs {
 
 export interface MediaProtocolDeps {
   readonly registry: Pick<MediaRegistry, 'resolve'>;
+  /** Serves media://art. Without it every art request is a 404. */
+  readonly artwork?: Pick<ArtworkStore, 'get'>;
   readonly fs: MediaFs;
   /** Origins allowed to read responses. Echoed only when the request `Origin` matches exactly. */
   readonly trusted: readonly string[];
@@ -57,7 +60,7 @@ export interface MediaProtocolDeps {
 export function createMediaProtocolHandler(
   deps: MediaProtocolDeps,
 ): (request: Request) => Promise<Response> {
-  const { registry, fs, trusted, extname, log } = deps;
+  const { registry, artwork, fs, trusted, extname, log } = deps;
   const baseHeaders = (request: Request): Record<string, string> => {
     const headers: Record<string, string> = {
       'X-Content-Type-Options': 'nosniff',
@@ -78,10 +81,26 @@ export function createMediaProtocolHandler(
     try {
       if (request.method !== 'GET' && request.method !== 'HEAD') return notFound(request);
       const parsed = parseMediaUrl(request.url);
-      // Block A serves audio only. The `art` host is served in a later block.
-      if (!parsed.ok || parsed.host !== 'track') {
+      if (!parsed.ok) {
         log.warn('media.rejected', { code: 'URL' });
         return notFound(request);
+      }
+      if (parsed.host === 'art') {
+        // Separate token namespace: a track token never resolves here and the reverse (ADR 0006 item 7).
+        const art = artwork?.get(parsed.token);
+        if (art === undefined) {
+          log.warn('media.rejected', { code: 'TOKEN' });
+          return notFound(request);
+        }
+        const artHeaders = {
+          ...baseHeaders(request),
+          'Content-Type': art.mimeType,
+          'Content-Length': String(art.data.byteLength),
+        };
+        return new Response(request.method === 'HEAD' ? null : art.data, {
+          status: 200,
+          headers: artHeaders,
+        });
       }
       const registered = registry.resolve(parsed.token);
       if (registered === undefined) {

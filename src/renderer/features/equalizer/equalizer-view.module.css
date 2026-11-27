@@ -36,3 +36,35 @@
   color: var(--na-color-text-muted);
   font-size: var(--na-font-size-1);
 }
+
+.root [data-part='eq-controls'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--na-space-3) var(--na-space-5);
+}
+.root [data-part='eq-preset'],
+.root [data-part='eq-bypass'],
+.root [data-part='eq-preamp'] {
+  display: flex;
+  align-items: center;
+  gap: var(--na-space-2);
+}
+.root [data-part='eq-preamp-value'],
+.root [data-part='eq-band-gain'] {
+  color: var(--na-color-text-muted);
+  font-family: var(--na-font-family-mono);
+  font-size: var(--na-font-size-1);
+}
+.root [data-part='eq-band-slider'] {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 8rem;
+  inline-size: 1.5rem;
+}
+.root input[type='range']:focus-visible,
+.root input[type='checkbox']:focus-visible,
+.root select:focus-visible {
+  outline: var(--na-focus-ring-width) solid var(--na-color-focus);
+  outline-offset: var(--na-focus-ring-offset);
+}

@@ -9,5 +9,12 @@ export interface NecroampApi {
   };
   readonly library: {
     readonly openFiles: (request: { readonly multiple: boolean }) => Promise<unknown>;
+    readonly resolveTrack: (request: { readonly trackId: string }) => Promise<unknown>;
+  };
+  readonly playlist: {
+    readonly load: () => Promise<unknown>;
+    readonly save: (request: {
+      readonly items: readonly { readonly trackId: string }[];
+    }) => Promise<unknown>;
   };
 }

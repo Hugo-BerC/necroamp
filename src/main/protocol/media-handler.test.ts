@@ -142,7 +142,7 @@ describe('media protocol handler', () => {
     }
   });
 
-  it('does not serve the art host in Block A', async () => {
+  it('never resolves a track token on the art host', async () => {
     const { get, registry } = setup();
     const token = registry.issue(path.join(dir, 'a.mp3'));
     expect((await get(`media://art/${token}`)).status).toBe(404);

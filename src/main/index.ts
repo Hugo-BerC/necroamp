@@ -2,6 +2,7 @@ import { createReadStream, statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { parseFile } from 'music-metadata';
 import { BrowserWindow, Menu, app, dialog, ipcMain, protocol, session } from 'electron';
 import { APP_NAME, PRELOAD_PATH_SEGMENTS, RENDERER_ROOT_SEGMENTS } from './constants';
 import { installIpcHandlers } from './ipc/install-ipc';
@@ -16,7 +17,10 @@ import {
 } from './lifecycle/platform-policy';
 import { acquireSingleInstance, focusOrCreateWindow } from './lifecycle/single-instance';
 import { E2E_USER_DATA_ENV, resolveUserDataOverride } from './lifecycle/user-data-override';
+import { createArtworkStore } from './library/artwork';
 import { createMediaRegistry } from './library/media-registry';
+import { createMetadataReader } from './library/metadata';
+import { createPlaylistPersistence } from './library/playlist-persistence';
 import { createLogger } from './logging/logger';
 import { installAppProtocol } from './protocol/app-protocol';
 import { installMediaProtocol } from './protocol/media-handler';
@@ -61,6 +65,7 @@ const rendererRoot = path.join(app.getAppPath(), ...RENDERER_ROOT_SEGMENTS);
 let mainWindow: BrowserWindow | null = null;
 const disposers: (() => void)[] = [];
 const mediaRegistry = createMediaRegistry();
+const artworkStore = createArtworkStore();
 
 function openMainWindow(): void {
   const window = createMainWindow({ BrowserWindow, preloadPath, target, log });
@@ -77,6 +82,7 @@ function openMainWindow(): void {
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
     mediaRegistry.clear();
+    artworkStore.clear();
   });
 }
 
@@ -117,6 +123,7 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
     disposers.push(
       installMediaProtocol(protocol, {
         registry: mediaRegistry,
+        artwork: artworkStore,
         fs: {
           realpath: (p) => fs.realpath(p),
           stat: (p) => fs.stat(p),
@@ -147,6 +154,18 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         fs,
         path,
         registry: mediaRegistry,
+        metadata: createMetadataReader({ parseFile, log }),
+        artwork: artworkStore,
+        playlistPersistence: createPlaylistPersistence({
+          fs: {
+            readFile: (p) => fs.readFile(p, 'utf8'),
+            writeFile: (p, data) => fs.writeFile(p, data, 'utf8'),
+            rename: (from, to) => fs.rename(from, to),
+            rm: (p) => fs.rm(p, { force: true }),
+          },
+          filePath: path.join(app.getPath('userData'), 'playlist.json'),
+          log,
+        }),
       }),
     );
     installAppMenu(Menu, { platform: process.platform, isDevRun });

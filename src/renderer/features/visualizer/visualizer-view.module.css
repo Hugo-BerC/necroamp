@@ -25,3 +25,27 @@
 .root [data-part='pane-state'] {
   color: var(--na-color-text-muted);
 }
+
+.live {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--na-space-3);
+  min-width: 0;
+}
+.live figure {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+}
+.live canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: var(--na-border-width) solid var(--na-color-border-control);
+  border-radius: var(--na-radius-1);
+  background: var(--na-color-surface-inset);
+}
+.live [data-part='pane-label'] {
+  color: var(--na-color-text-muted);
+  font-size: var(--na-font-size-1);
+}

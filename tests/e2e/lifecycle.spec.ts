@@ -158,9 +158,10 @@ test.describe('layout and keyboard', () => {
     page,
   }) => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    // Block A added range inputs (seek, volume). Every enabled button and input must be reached.
+    // Block A added range inputs (seek, volume), Block C the preset select. Every enabled
+    // button, input and select must be reached.
     const names = await page
-      .locator('button, input:not([disabled])')
+      .locator('button, input:not([disabled]), select:not([disabled])')
       .evaluateAll((els) => els.map((e) => (e.id !== '' ? e.id : e.textContent)));
     expect(names.length).toBeGreaterThanOrEqual(5);
     const seen: (string | null)[] = [];
