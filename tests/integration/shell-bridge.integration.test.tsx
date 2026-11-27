@@ -1,6 +1,8 @@
+import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { installIpcHandlers } from '@main/ipc/install-ipc';
+import { createMediaRegistry } from '@main/library/media-registry';
 import type { SenderEventLike } from '@main/security/sender-validation';
 import { AppShell } from '@renderer/app/app-shell';
 import { createNecroampClient } from '@renderer/app/bridge/necroamp-client';
@@ -33,6 +35,10 @@ function mount(options: {
     trusted: ['app://renderer'],
     isRegisteredSender: (s) => options.registered !== false && s === sender,
     log,
+    showOpenDialog: () => Promise.resolve({ canceled: true, filePaths: [] }),
+    fs: { stat: () => Promise.resolve({ isFile: () => true }) },
+    path,
+    registry: createMediaRegistry(),
   });
   const api = createNecroampApi((channel) => {
     const listener = listeners.get(channel);

@@ -11,3 +11,5 @@ export const PRELOAD_PATH_SEGMENTS = ['..', 'preload', 'index.js'] as const;
 
 /** Built renderer root, relative to `app.getAppPath()`. */
 export const RENDERER_ROOT_SEGMENTS = ['out', 'renderer'] as const;
+/** Privileged scheme that serves user-selected audio by opaque token (ADR 0006). */
+export const MEDIA_SCHEME = 'media';

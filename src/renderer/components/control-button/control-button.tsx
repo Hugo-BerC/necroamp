@@ -8,6 +8,10 @@ export interface ControlButtonProps {
   /** Id of a visible element that explains why the control is unavailable. */
   readonly describedBy?: string;
   readonly part?: string;
+  /** Accessible name when the visible label is short and needs context (for example list rows). */
+  readonly ariaLabel?: string;
+  /** Toggle state. Omit for plain buttons. */
+  readonly pressed?: boolean;
 }
 
 export function ControlButton({
@@ -16,13 +20,17 @@ export function ControlButton({
   unavailable = false,
   describedBy,
   part = 'control',
+  ariaLabel,
+  pressed,
 }: ControlButtonProps) {
   return (
     <button
       type="button"
       className={styles.control}
       aria-disabled={unavailable ? true : undefined}
+      aria-label={ariaLabel}
       aria-describedby={describedBy}
+      aria-pressed={pressed}
       data-part={part}
       data-unavailable={unavailable ? 'true' : undefined}
       onClick={onActivate}

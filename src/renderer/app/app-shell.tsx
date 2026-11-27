@@ -8,7 +8,15 @@ import { VisualizerRegion } from '@renderer/features/visualizer';
 import { RegionBoundary } from '@renderer/components/region-boundary';
 import { RegionFrame } from '@renderer/components/region-frame';
 import { StatusText } from '@renderer/components/status-text';
+import type { AudioProcessing } from '@renderer/audio';
+import { AudioProcessingProvider } from '@renderer/stores/audio-processing-context';
+import type { EqStore } from '@renderer/stores/eq-store';
+import { EqStoreProvider } from '@renderer/stores/eq-store-context';
 import type { AppInfoStore } from '@renderer/stores/app-info-store';
+import type { PlayerStore } from '@renderer/stores/player-store';
+import { PlayerStoreProvider } from '@renderer/stores/player-store-context';
+import type { PlaylistStore } from '@renderer/stores/playlist-store';
+import { PlaylistStoreProvider } from '@renderer/stores/playlist-store-context';
 import { FOUNDATION_LAYOUT, type RegionId } from './shell-layout';
 import { STRINGS } from './strings/en';
 import { useAppInfo } from './use-app-info';
@@ -25,9 +33,23 @@ const REGION_COMPONENTS: Readonly<Record<RegionId, ComponentType>> = {
 
 export interface AppShellProps {
   readonly appInfoStore: AppInfoStore;
+  /** Omit to render the player as an inert placeholder (tests, missing engine). */
+  readonly playerStore?: PlayerStore;
+  /** Omit to render the playlist as an inert placeholder. Needs a player store to be useful. */
+  readonly playlistStore?: PlaylistStore;
+  /** Omit to render the equalizer as an inert placeholder. */
+  readonly eqStore?: EqStore;
+  /** Omit to render the visualizer as an inert placeholder. */
+  readonly audioProcessing?: AudioProcessing;
 }
 
-export function AppShell({ appInfoStore }: AppShellProps) {
+export function AppShell({
+  appInfoStore,
+  playerStore,
+  playlistStore,
+  eqStore,
+  audioProcessing,
+}: AppShellProps) {
   const { status, data, failure } = useAppInfo(appInfoStore);
   const bridgeText =
     status === 'failed' && failure !== undefined
@@ -35,7 +57,7 @@ export function AppShell({ appInfoStore }: AppShellProps) {
       : STRINGS.bridgeStatus[status];
   const tone = status === 'failed' ? 'danger' : status === 'unavailable' ? 'warning' : 'neutral';
 
-  return (
+  const shell = (
     <div className={styles.shell} data-part="shell">
       <header className={styles.header} data-part="header">
         <h1>{STRINGS.appName}</h1>
@@ -64,7 +86,11 @@ export function AppShell({ appInfoStore }: AppShellProps) {
             </div>
             <div>
               <dt>{STRINGS.header.audioEngine}</dt>
-              <dd>{STRINGS.header.audioEngineValue}</dd>
+              <dd>
+                {playerStore === undefined
+                  ? STRINGS.header.audioEngineValue
+                  : STRINGS.header.audioEngineReadyValue}
+              </dd>
             </div>
           </dl>
         </div>
@@ -87,5 +113,24 @@ export function AppShell({ appInfoStore }: AppShellProps) {
         })}
       </main>
     </div>
+  );
+  const withEq =
+    eqStore === undefined ? shell : <EqStoreProvider store={eqStore}>{shell}</EqStoreProvider>;
+  const withProcessing =
+    audioProcessing === undefined ? (
+      withEq
+    ) : (
+      <AudioProcessingProvider processing={audioProcessing}>{withEq}</AudioProcessingProvider>
+    );
+  const withPlaylist =
+    playlistStore === undefined ? (
+      withProcessing
+    ) : (
+      <PlaylistStoreProvider store={playlistStore}>{withProcessing}</PlaylistStoreProvider>
+    );
+  return playerStore === undefined ? (
+    withPlaylist
+  ) : (
+    <PlayerStoreProvider store={playerStore}>{withPlaylist}</PlayerStoreProvider>
   );
 }

@@ -1,4 +1,7 @@
 import type { Platform } from '@shared/ipc';
+import type { PlaybackErrorCode } from '@shared/audio/playback-state';
+import type { OpenFilesFailureReason } from '@renderer/stores/player-store';
+import type { RepeatMode } from '@renderer/stores/playlist-ops';
 import type { AppInfoFailureReason, AppInfoStatus } from '@renderer/stores/app-info-store';
 import type { RegionId } from '@renderer/components/region-frame';
 
@@ -18,6 +21,7 @@ export const STRINGS = {
     bridge: 'Application bridge',
     audioEngine: 'Audio engine',
     audioEngineValue: 'Not implemented in this phase',
+    audioEngineReadyValue: 'Local playback',
   },
   bridgeStatus: {
     idle: 'Waiting to start',
@@ -50,9 +54,32 @@ export const STRINGS = {
     transport: 'Transport controls',
     titleLabel: 'Title',
     artistLabel: 'Artist',
+    albumLabel: 'Album',
+    artworkAlt: (title: string): string => `Artwork for ${title}`,
+    noAlbum: 'Unknown',
     positionLabel: 'Position',
     noTrack: 'No track loaded',
     noArtist: 'Unknown',
+    file: 'File',
+    open: 'Open',
+    seek: 'Seek',
+    seekValueText: (elapsed: string, duration: string): string => `${elapsed} of ${duration}`,
+    volume: 'Volume',
+    volumeGroup: 'Volume controls',
+    mute: 'Mute',
+    playlistNote: 'Previous and Next need a playlist, which is not implemented yet.',
+    errors: {
+      UNSUPPORTED: 'This file type or encoding is not supported.',
+      CORRUPT: 'This file appears to be damaged and cannot be played.',
+      NOT_FOUND: 'The file could not be found. It may have been moved or deleted.',
+      DECODE: 'This file could not be decoded.',
+    } satisfies Record<PlaybackErrorCode, string>,
+    openFailures: {
+      unavailable: 'The application bridge is unavailable, so files cannot be opened.',
+      rejected: 'The application did not respond to the open request.',
+      'invalid-response': 'The application returned an unexpected response.',
+      'ipc-error': 'The file could not be opened.',
+    } satisfies Record<OpenFilesFailureReason, string>,
     controls: {
       previous: 'Previous',
       play: 'Play',
@@ -63,9 +90,48 @@ export const STRINGS = {
   },
   playlist: {
     empty: 'The playlist is empty. Playlists are not implemented in this phase.',
+    emptyLive: 'The playlist is empty. Use Add files or Add folder to choose music.',
     addFiles: 'Add files',
+    addFolder: 'Add folder',
     savePlaylist: 'Save playlist',
     listLabel: 'Playlist items',
+    actionsLabel: 'Playlist controls',
+    clear: 'Clear',
+    shuffle: 'Shuffle',
+    repeatValue: { off: 'Off', track: 'Track', playlist: 'Playlist' } satisfies Record<
+      RepeatMode,
+      string
+    >,
+    repeatLabel: (modeText: string): string => `Repeat: ${modeText}`,
+    loading: 'Loading the saved playlist',
+    itemCount: (count: number): string => (count === 1 ? '1 track' : `${String(count)} tracks`),
+    up: 'Up',
+    down: 'Down',
+    removeLabel: 'Remove',
+    play: (title: string): string => `Play ${title}`,
+    moveUp: (title: string): string => `Move ${title} up`,
+    moveDown: (title: string): string => `Move ${title} down`,
+    remove: (title: string): string => `Remove ${title}`,
+    nowPlayingMarker: 'Now playing',
+    missing: 'File missing',
+    unknownArtist: 'Unknown artist',
+    unknownAlbum: 'Unknown album',
+    noArtwork: 'No artwork',
+    notices: {
+      'load-failed': 'The saved playlist could not be loaded.',
+      'save-failed': 'The playlist could not be saved.',
+      'list-full': 'The playlist is full. Some files were not added.',
+      'folder-empty': 'No supported audio files were found in that folder.',
+      'folder-truncated': 'The folder is large. Only the first tracks were added.',
+      'track-unavailable': 'This file is missing. It may have been moved or deleted.',
+      'all-failed': 'None of the tracks could be played.',
+    },
+    openFailures: {
+      unavailable: 'The application bridge is unavailable, so files cannot be added.',
+      rejected: 'The application did not respond to the add request.',
+      'invalid-response': 'The application returned an unexpected response.',
+      'ipc-error': 'The files could not be added.',
+    } satisfies Record<OpenFilesFailureReason, string>,
   },
   equalizer: {
     bands: 'Equalizer bands',
@@ -83,10 +149,19 @@ export const STRINGS = {
       '16 kHz',
     ],
     unavailable: 'Equalizer is not implemented in this phase. No audio is processed.',
+    controls: 'Equalizer controls',
+    preamp: 'Preamp',
+    bypass: 'Bypass equalizer',
+    preset: 'Preset',
+    custom: 'Custom',
+    bandSlider: (frequency: string): string => `${frequency} gain`,
+    gainText: (db: number): string => `${db > 0 ? '+' : ''}${db} dB`,
   },
   visualizer: {
     spectrum: 'Spectrum',
     waveform: 'Waveform',
+    spectrumDescription: 'Frequency spectrum of the audio being played',
+    waveformDescription: 'Waveform of the audio being played',
     unavailable: 'Visualizations are not implemented in this phase. There is no audio to show.',
   },
   skins: {

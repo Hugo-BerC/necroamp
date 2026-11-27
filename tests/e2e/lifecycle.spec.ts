@@ -154,18 +154,24 @@ test.describe('layout and keyboard', () => {
     });
   }
 
-  test('Tab visits every button in DOM order with a visible focus ring and no trap', async ({
+  test('Tab visits every enabled control in DOM order with a visible focus ring and no trap', async ({
     page,
   }) => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // Block A added range inputs (seek, volume), Block C the preset select. Every enabled
+    // button, input and select must be reached.
     const names = await page
-      .getByRole('button')
-      .evaluateAll((els) => els.map((e) => e.textContent));
+      .locator('button, input:not([disabled]), select:not([disabled])')
+      .evaluateAll((els) => els.map((e) => (e.id !== '' ? e.id : e.textContent)));
     expect(names.length).toBeGreaterThanOrEqual(5);
     const seen: (string | null)[] = [];
     for (let i = 0; i < names.length; i += 1) {
       await page.keyboard.press('Tab');
-      seen.push(await page.evaluate(() => document.activeElement?.textContent ?? null));
+      seen.push(
+        await page.evaluate(
+          () => (document.activeElement?.id || document.activeElement?.textContent) ?? null,
+        ),
+      );
       const ring = await page.evaluate(() => {
         const style = getComputedStyle(document.activeElement as Element);
         return { style: style.outlineStyle, width: style.outlineWidth, color: style.outlineColor };
@@ -178,11 +184,17 @@ test.describe('layout and keyboard', () => {
     // An Electron window has no browser chrome, so Tab after the last control wraps to the first.
     // Wrapping, and Shift+Tab walking back, proves there is no trap.
     await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => document.activeElement?.textContent ?? null)).toBe(names[0]);
+    expect(
+      await page.evaluate(
+        () => (document.activeElement?.id || document.activeElement?.textContent) ?? null,
+      ),
+    ).toBe(names[0]);
     await page.keyboard.press('Shift+Tab');
-    expect(await page.evaluate(() => document.activeElement?.textContent ?? null)).toBe(
-      names[names.length - 1],
-    );
+    expect(
+      await page.evaluate(
+        () => (document.activeElement?.id || document.activeElement?.textContent) ?? null,
+      ),
+    ).toBe(names[names.length - 1]);
   });
 
   test('an unavailable control stays focusable, keeps aria-disabled and reports itself', async ({

@@ -107,12 +107,16 @@ describe('installIpcHandlers', () => {
       trusted,
       isRegisteredSender,
       log: silentLog(),
+      showOpenDialog: () => Promise.resolve({ canceled: true, filePaths: [] }),
+      fs: { stat: () => Promise.resolve({ isFile: () => true }) },
+      path: { basename: (v: string) => v, extname: () => '.mp3' },
+      registry: { issue: () => null, resolve: () => undefined, clear: () => undefined, size: 0 },
     });
     return { ipcMain, dispose };
   };
 
-  it('registers only the app:get-info channel', () => {
-    expect(make(() => true).ipcMain.channels).toEqual(['app:get-info']);
+  it('registers only the app and library channels', () => {
+    expect(make(() => true).ipcMain.channels).toEqual(['app:get-info', 'library:open-files']);
   });
 
   it('accepts the registered top frame on a trusted origin', async () => {
@@ -163,6 +167,6 @@ describe('installIpcHandlers', () => {
   it('removes the handler on dispose', () => {
     const { ipcMain, dispose } = make(() => true);
     dispose();
-    expect(ipcMain.removed).toEqual(['app:get-info']);
+    expect(ipcMain.removed).toEqual(['app:get-info', 'library:open-files']);
   });
 });

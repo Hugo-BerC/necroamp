@@ -1,22 +1,31 @@
-import { statSync } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BrowserWindow, Menu, app, ipcMain, protocol, session } from 'electron';
+import { Readable } from 'node:stream';
+import { parseFile } from 'music-metadata';
+import { IPC_EVENT_CHANNELS } from '@shared/ipc';
+import { BrowserWindow, Menu, app, dialog, ipcMain, protocol, session } from 'electron';
 import { APP_NAME, PRELOAD_PATH_SEGMENTS, RENDERER_ROOT_SEGMENTS } from './constants';
 import { installIpcHandlers } from './ipc/install-ipc';
 import {
   attachRendererCrashHandler,
   installProcessCrashHandlers,
 } from './lifecycle/crash-handlers';
-import { installAppMenu } from './lifecycle/app-menu';
+import { installAppMenu, type AppMenuController } from './lifecycle/app-menu';
 import {
   shouldCreateWindowOnActivate,
   shouldQuitOnAllWindowsClosed,
 } from './lifecycle/platform-policy';
 import { acquireSingleInstance, focusOrCreateWindow } from './lifecycle/single-instance';
 import { E2E_USER_DATA_ENV, resolveUserDataOverride } from './lifecycle/user-data-override';
+import { createArtworkStore } from './library/artwork';
+import { createMediaRegistry } from './library/media-registry';
+import { createMetadataReader } from './library/metadata';
+import { createPlaylistPersistence } from './library/playlist-persistence';
 import { createLogger } from './logging/logger';
-import { installAppProtocol, registerAppScheme } from './protocol/app-protocol';
+import { installAppProtocol } from './protocol/app-protocol';
+import { installMediaProtocol } from './protocol/media-handler';
+import { registerPrivilegedSchemes } from './protocol/register-schemes';
 import { buildCsp } from './security/csp';
 import { installDevCspHook } from './security/dev-csp';
 import { resolveTrustedOrigins } from './security/trusted-origins';
@@ -56,6 +65,9 @@ const rendererRoot = path.join(app.getAppPath(), ...RENDERER_ROOT_SEGMENTS);
 
 let mainWindow: BrowserWindow | null = null;
 const disposers: (() => void)[] = [];
+let appMenu: AppMenuController | null = null;
+const mediaRegistry = createMediaRegistry();
+const artworkStore = createArtworkStore();
 
 function openMainWindow(): void {
   const window = createMainWindow({ BrowserWindow, preloadPath, target, log });
@@ -71,13 +83,16 @@ function openMainWindow(): void {
   );
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    mediaRegistry.clear();
+    appMenu?.setClearPlaylistEnabled(false);
+    artworkStore.clear();
   });
 }
 
 // 3. Single instance. A second process quits before any other work (D11).
 if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWindow))) {
   // 4. Privileged scheme registration. Must run before `ready`.
-  registerAppScheme(protocol);
+  registerPrivilegedSchemes(protocol);
 
   // 5. Process crash handlers.
   installProcessCrashHandlers(process, app, log);
@@ -108,6 +123,21 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         log,
       }),
     );
+    disposers.push(
+      installMediaProtocol(protocol, {
+        registry: mediaRegistry,
+        artwork: artworkStore,
+        fs: {
+          realpath: (p) => fs.realpath(p),
+          stat: (p) => fs.stat(p),
+          openRange: (p, start, end) =>
+            Readable.toWeb(createReadStream(p, { start, end })) as ReadableStream<Uint8Array>,
+        },
+        trusted,
+        extname: path.extname,
+        log,
+      }),
+    );
     if (target.kind === 'development') {
       installDevCspHook(session.defaultSession.webRequest, target.devOrigin);
     }
@@ -119,9 +149,48 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         trusted,
         isRegisteredSender: (sender) => mainWindow !== null && sender === mainWindow.webContents,
         log,
+        // Resolved at call time so a test can replace dialog.showOpenDialog.
+        showOpenDialog: (options) =>
+          mainWindow === null
+            ? dialog.showOpenDialog(options as Electron.OpenDialogOptions)
+            : dialog.showOpenDialog(mainWindow, options as Electron.OpenDialogOptions),
+        fs,
+        path,
+        folder: {
+          fs: {
+            readdir: (p) => fs.readdir(p, { withFileTypes: true }),
+            realpath: (p) => fs.realpath(p),
+          },
+          path,
+        },
+        setClearPlaylistEnabled: (enabled) => appMenu?.setClearPlaylistEnabled(enabled),
+        registry: mediaRegistry,
+        metadata: createMetadataReader({ parseFile, log }),
+        artwork: artworkStore,
+        playlistPersistence: createPlaylistPersistence({
+          fs: {
+            readFile: (p) => fs.readFile(p, 'utf8'),
+            writeFile: (p, data) => fs.writeFile(p, data, 'utf8'),
+            rename: (from, to) => fs.rename(from, to),
+            rm: (p) => fs.rm(p, { force: true }),
+          },
+          filePath: path.join(app.getPath('userData'), 'playlist.json'),
+          log,
+        }),
       }),
     );
-    installAppMenu(Menu, { platform: process.platform, isDevRun });
+    appMenu = installAppMenu(Menu, {
+      platform: process.platform,
+      isDevRun,
+      onCommand: (command) => {
+        const window = mainWindow;
+        if (window === null || window.isDestroyed()) return;
+        if (window.isMinimized()) window.restore();
+        window.focus();
+        // Payload is a command name only. The preload validates it again.
+        window.webContents.send(IPC_EVENT_CHANNELS.menuCommand, { command });
+      },
+    });
     openMainWindow();
   });
 }

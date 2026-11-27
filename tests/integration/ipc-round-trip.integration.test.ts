@@ -1,6 +1,8 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { appInfoResponseSchema } from '@shared/ipc';
 import { installIpcHandlers } from '@main/ipc/install-ipc';
+import { createMediaRegistry } from '@main/library/media-registry';
 import type { SenderEventLike } from '@main/security/sender-validation';
 import { createNecroampApi } from '../../src/preload/create-necroamp-api';
 
@@ -27,6 +29,10 @@ function wire(senderFrame: SenderEventLike['senderFrame'], sender: unknown, plat
     trusted: ['app://renderer'],
     isRegisteredSender: (s) => s === TRUSTED_SENDER,
     log,
+    showOpenDialog: () => Promise.resolve({ canceled: true, filePaths: [] }),
+    fs: { stat: () => Promise.resolve({ isFile: () => true }) },
+    path,
+    registry: createMediaRegistry(),
   });
   const api = createNecroampApi((channel) => {
     const listener = listeners.get(channel);
@@ -67,10 +73,10 @@ describe('preload <-> main IPC round trip', () => {
     expect(await api.app.getInfo()).toMatchObject({ ok: false, error: { code: 'INTERNAL' } });
   });
 
-  it('registers exactly one channel and the disposer removes it', () => {
+  it('registers exactly the app and library channels and the disposer removes them', () => {
     const { listeners, removed, dispose } = wire(null, null);
-    expect([...listeners.keys()]).toEqual(['app:get-info']);
+    expect([...listeners.keys()]).toEqual(['app:get-info', 'library:open-files']);
     dispose();
-    expect(removed).toEqual(['app:get-info']);
+    expect(removed).toEqual(['app:get-info', 'library:open-files']);
   });
 });

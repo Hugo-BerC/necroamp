@@ -46,3 +46,39 @@
   flex: 1 1 100%;
   color: var(--na-color-text-muted);
 }
+
+.root [data-part='seek'],
+.root [data-part='volume'] {
+  display: flex;
+  align-items: center;
+  gap: var(--na-space-3);
+  min-width: 0;
+}
+.root [data-part='seek'] {
+  flex: 1 1 100%;
+}
+.root [data-part='seek'] input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.root [data-part='volume'] input {
+  width: 8rem;
+}
+.root input[type='range']:focus-visible {
+  outline: var(--na-focus-ring-width) solid var(--na-color-focus);
+  outline-offset: var(--na-focus-ring-offset);
+}
+.root input[type='range']:disabled {
+  cursor: not-allowed;
+}
+
+.root [data-part='now-playing'] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--na-space-3);
+}
+
+.root [data-part='now-playing'] dl {
+  flex: 1 1 auto;
+  min-width: 0;
+}

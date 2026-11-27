@@ -86,3 +86,22 @@ Source: `docs/architecture/review-desktop-foundation-final-dispositions.md`. Ope
 | T8.6 | human | No human confirmation of the Desktop Foundation final approval exists. Decide whether to give one. | Before relying on Desktop Foundation as accepted. |
 | A-1, A-3, A-4 | necro-architect | Documentation drift items from the architecture gate (ADR 0005 F-5 addendum; steering open decisions 1, 8, 9 still marked open). | Next steering or ADR edit. |
 | A1 | human | Manual agent-skill activation test (carried from Phase 03). | Open. |
+## Audio Engine (PR #7): accepted limitations and follow-ups
+Accepted by the maintainer for the current MVP when authorizing the merge of PR #7. Sources: docs/security/audio-engine-review.md, docs/engineering/audio-engine-pr-body.md, .kiro/specs/audio-engine/as-built.md.
+| ID | Severity | Owner | Item | Status |
+|---|---|---|---|---|
+| AE-11 | Info | necro-architect | A mapped network drive letter (Windows) or a network mount (posix) looks local to the path check, so playlist:load can still touch the network for such an entry. Needs a drive-type check. Record in the threat model. | Accepted for MVP. Open. |
+| AE-12 | Info | desktop-engineer | Reserved Windows device names with an audio extension (for example CON.mp3) are not rejected on restoration. They stay local and become unavailable items. | Accepted for MVP. Open. |
+| AE-13 | Info | qa-engineer | The ealpath and open assertions in playlist-restore-security.test.ts cannot fail because the spied fs object is not used by romPath. Remove them or spy on a dependency the code uses. | Accepted for MVP. Open. |
+| FLAKE-1 | Medium | qa-engineer | One E2E run of the final code had 1 failed test out of 89. The failing test was not recorded, the next runs passed 89 of 89, and the cause is unidentified. It is not attributed to the earlier "Render frame was disposed" error because no evidence links them. | Unresolved. Reproduce with repeated runs and trace capture and record the test name. |
+| AE-01 | Low | desktop-engineer | Metadata parsing has no per-file timeout, size cap or concurrency bound. | Accepted. Open. |
+| AE-03 | Low | desktop-engineer | The media handler uses stat then opens the stream (size mismatch if the file changes). Use one file handle. | Accepted. Open. |
+| AE-04 | Info | necro-architect | media:// applies to the whole default session. The Skin Engine must not load untrusted web content in it. | Carry into the Skin Engine design. |
+| AE-06 | Info | desktop-engineer | A few cosmetic characters (U+2028, U+2029, U+061C, the Unicode tag block) still pass tag cleaning. | Accepted. Open. |
+| AE-08 | Info | desktop-engineer | supportFetchAPI on the media scheme is not needed by the player. | Optional. |
+| AE-09, AE-10 | Info | desktop-engineer | Menu IPC and folder scan Info findings (see the review). | Accepted. Open. |
+| AUD-1 | Medium | desktop-engineer, frontend-engineer | Equalizer settings are not persisted (spec task C.3, no settings IPC). | Deferred. Open. |
+| AUD-2 | Low | qa-engineer | Only Windows x64 was tested. macOS, Linux and Ogg Opus are untested. No CI. | Open (see V-5). |
+| AUD-3 | Low | qa-engineer | Eight symlink tests are skipped without privilege; junction and mocked-realpath equivalents run. | Open (see V-12). |
+| AUD-4 | Low | orchestrator | docs/assets.md does not exist. The fixture license note is in 	ests/fixtures/audio/README.md. | Open (see V-16). |
+| H-AUD-1 | human | human | H.1 ADR 0006 review is not confirmed. H.2 per-format listening and H.3 visual check of spectrum and waveform are not confirmed. Playlist behaviors other than automatic first-track loading (double-click plays, add keeps the current track, restart restores the selection, File menu parity, Open Folder) are not confirmed by a human. | Open. Not marked as passed. |

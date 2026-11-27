@@ -263,3 +263,58 @@ Incident record, correction of false approval claims, hook evidence, E-ESM-1 tec
 A coding subagent in a workflow step, directed by the orchestrator. No custom agent, no permission change.
 ### Notable decision
 The merge was not reverted. The human asked for a limited reconciliation and a PR that is not merged automatically.
+
+## 17. Audio Engine (branch `feature/audio-engine`)
+
+### What was done
+
+- Spec: `.kiro/specs/audio-engine/` (requirements, design, tasks), written first and kept concise. ADR 0006 records the media protocol and audio pipeline choice (provisional, human review H.1 open).
+- Block A, core playback: `media://track/<uuid>` protocol with Range support, `library:open-files` with the native dialog in main, one hidden `HTMLAudioElement`, player store, transport, seek, time, volume, mute, error states. Committed as 85ba290.
+- Block B, playlist and metadata: `music-metadata` 13.0.1 in main, `media://art/<uuid>` for embedded artwork (PNG, JPEG, WebP by magic bytes), `playlist:load` and `playlist:save` with atomic, Zod-validated persistence in `userData/playlist.json`, playlist store with shuffle, repeat, reorder and remove.
+- Block C, DSP and visualization: native Web Audio graph (source, ten biquads, preamp, master gain, analyser), bypass, presets, spectrum and waveform canvases on `requestAnimationFrame` with a visibility pause. No AudioWorklet (spec C8).
+- Final step: fixed the Gate C blockers. ESLint and the static renderer policy now allow `AudioContext`, `AnalyserNode` and `requestAnimationFrame` only in `src/renderer/audio/**`; the ban stays for the rest of the renderer. The player row no longer collapses at 800x600 (grid rows `min-content` instead of `auto`). The Tab-order E2E now includes the preset `select`. The volume and mute E2E now observes the master gain through the spectrum canvas, because Block C moved volume from the element to the graph.
+
+### Kiro features used
+
+- **Spec**: `.kiro/specs/audio-engine/`.
+- **Custom agents** (evidence: review and notes files): `qa-engineer` (Gate B and Gate C reviews in `docs/testing/`), `security-reviewer` (`docs/security/audio-engine-review.md`), `audio-engineer` (`docs/audio/dsp-notes.md`), with `desktop-engineer` and `frontend-engineer` named as owners of fixes.
+- **Skills**: `audio-processing`, `electron-security`, `testing-strategy`, `typescript-standards`.
+- **Workflow**: multi-step run `wf_fd4f557bcef2ac47` (implementation, gates, security review, finalization). Source: Prompt.
+
+### Decisions
+
+- Volume and mute go to the master `GainNode` once the graph exists; before that, to the element. Recorded in `src/renderer/audio/audio-engine.ts`.
+- Security review AE-01 to AE-05 are Low or Info. They are recorded as limitations in the PR body, not fixed in this branch.
+- EQ settings persistence (spec C4) is not wired: no `settings:*` IPC channel exists yet. EQ resets to Flat on restart.
+
+### Result
+
+Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check, build exit 0. Vitest 108 files, 1417 passed, 1 expected fail (defect D-B1), 4 skipped (symlink privilege). Coverage statements 99.3, branches 96.13, functions 99.16, lines 99.5, thresholds unchanged. test:e2e 76 passed. All playback checks are automated; no human listening was done. Human gates H.1 to H.4 stay open.
+
+### 17.1 Audio Engine final delivery
+- Gate fixes: D-A4 (audio-engineer), D-A6 CSP oracle (qa-engineer), D-B1 tag control-character sanitization (desktop-engineer), AE-07 stray control characters in a source comment (orchestrator).
+- Added a real Ogg Vorbis fixture and a real-AudioContext equalizer e2e (qa-engineer). The generator dependency wasm-media-encoders 0.7.0 is dev-only and not shipped (docs/engineering/audio-engine-dependency-review.md).
+- Final security review: APPROVED_WITH_LIMITATIONS, no Medium or higher (docs/security/audio-engine-review.md). ADR 0006 reconciled with the implemented CSP and protocol; Spec as-built record in .kiro/specs/audio-engine/as-built.md.
+- Orchestration note: step agents cannot commit, push or write .agents/ or *.property.test.ts, so the orchestrator performed those. Human gates H.1 to H.4 remain open; no human listening has occurred.
+
+### 17.2 Native File menu integration (PR #7)
+- What: the native File menu now has Open Files (Ctrl/Cmd+O), Open Folder (Ctrl/Cmd+Shift+O), Clear Playlist and Exit (Quit on macOS). Prompted by manual testing, where the menu only had Exit.
+- Feature: Audio Engine. Menu clicks go to the renderer on a typed `menu:command` push channel. The renderer reports whether the playlist has tracks on `menu:report-state`, so Clear Playlist is disabled when empty. Open Folder is a new `library:open-folder` handler that scans in main (depth, entry and track limits, symlinks skipped) and issues media tokens, so no paths reach the renderer.
+- Changed: shared IPC schemas, main menu, folder scan and handlers, preload API, and tests for each. Existing security settings are unchanged.
+- Agents: desktop-engineer (main, preload, shared IPC), qa-engineer (integration test updates), with the orchestrator handling integration, commits and push.
+
+### 17.2 Auto-select first track and restore selection
+- Defect from manual acceptance testing: import into an empty playlist left the player on 'No track loaded'. Fixed across persistence (desktop-engineer), stores (frontend-engineer) and tests (qa-engineer). First QA gate returned CHANGES_REQUESTED (D1 to D3); targeted fixes were delegated per owner and the orchestrator reran the full gates.
+
+
+### 17.3 Pre-merge verification
+- Security review of selectedPath persistence: APPROVED_WITH_LIMITATIONS; AE-02 still open (Low). pnpm audit clean. One unidentified intermittent e2e failure recorded as unresolved flaky. Maintainer reported audible playback and working equalization; playlist behavior acceptance pending. No human gate closed by an agent.
+
+
+### 17.4 AE-02 resolution
+- Fixed by restricting persisted playlist restoration to valid local absolute paths (desktop-engineer); focused security review APPROVED_WITH_LIMITATIONS with AE-02 RESOLVED and Info items AE-11 to AE-13. Network-hosted tracks are not restored automatically (outside MVP).
+
+
+### 17.5 Merge authorization
+- The maintainer confirmed audible playback, working equalization and automatic track loading after import, and explicitly authorized merging PR #7. Other human checks (H.1, H.3, per-format listening, remaining playlist behaviors) were not confirmed and are recorded as open in docs/engineering/backlog.md (H-AUD-1). Accepted limitations AE-11, AE-12, AE-13 and the unresolved flaky E2E failure (FLAKE-1) were added to the backlog.
+

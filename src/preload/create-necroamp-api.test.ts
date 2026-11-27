@@ -7,8 +7,11 @@ const VALID = { ok: true, data: { name: 'NecroAmp', version: '0.1.0', platform: 
 describe('createNecroampApi exposure boundary', () => {
   const api = createNecroampApi(() => Promise.resolve(VALID));
 
-  it('exposes exactly app.getInfo', () => {
-    expect(Object.keys(api)).toEqual(['app']);
+  it('exposes exactly the app, library and playlist methods', () => {
+    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist', 'menu']);
+    expect(Object.keys(api.library)).toEqual(['openFiles', 'openFolder', 'resolveTrack']);
+    expect(Object.keys(api.menu)).toEqual(['onCommand', 'reportPlaylistState']);
+    expect(Object.keys(api.playlist)).toEqual(['load', 'save']);
     expect(Object.keys(api.app)).toEqual(['getInfo']);
     expect(typeof api.app.getInfo).toBe('function');
   });
@@ -16,6 +19,8 @@ describe('createNecroampApi exposure boundary', () => {
   it('is frozen at every level', () => {
     expect(Object.isFrozen(api)).toBe(true);
     expect(Object.isFrozen(api.app)).toBe(true);
+    expect(Object.isFrozen(api.library)).toBe(true);
+    expect(Object.isFrozen(api.playlist)).toBe(true);
   });
 
   it('leaks no ipcRenderer, invoke, send or on', () => {
@@ -88,5 +93,68 @@ describe('getInfo', () => {
     a.error.message = 'changed';
     const b = (await api.app.getInfo()) as { error: { message: string } };
     expect(b.error.message).toBe(IPC_ERROR_MESSAGES.INTERNAL);
+  });
+});
+
+describe('createNecroampApi library.openFiles', () => {
+  const TOKEN = '123e4567-e89b-42d3-a456-426614174000';
+  const track = {
+    trackId: TOKEN,
+    mediaUrl: `media://track/${TOKEN}`,
+    fileName: 'a.mp3',
+    title: 'a',
+    artist: 'Unknown artist',
+    album: '',
+    durationSec: null,
+    artworkUrl: null,
+    available: true,
+  };
+
+  it('invokes library:open-files with only the parsed request and returns parsed data', async () => {
+    const invoke = vi.fn(() => Promise.resolve({ ok: true, data: { tracks: [track] } }));
+    const api = createNecroampApi(invoke);
+    const result = await api.library.openFiles({ multiple: true });
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.libraryOpenFiles, { multiple: true });
+    expect(result).toEqual({ ok: true, data: { tracks: [track] } });
+  });
+
+  it.each([
+    [],
+    [{}],
+    [{ multiple: 1 }],
+    [{ multiple: true, path: 'C:\\x.mp3' }],
+    [{ multiple: true }, 2],
+  ])('rejects invalid request %j before invoking', async (...args) => {
+    const invoke = vi.fn(() => Promise.resolve(VALID));
+    const api = createNecroampApi(invoke);
+    const result = (await (api.library.openFiles as (...a: unknown[]) => Promise<unknown>)(
+      ...args,
+    )) as { ok: boolean; error: { code: string } };
+    expect(result.ok).toBe(false);
+    expect(result.error.code).toBe('INVALID_PAYLOAD');
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('maps transport failure to INTERNAL without the exception text', async () => {
+    const api = createNecroampApi(() => Promise.reject(new Error('C:\\secret\\path.mp3')));
+    const result = await api.library.openFiles({ multiple: false });
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'INTERNAL', message: IPC_ERROR_MESSAGES.INTERNAL },
+    });
+    expect(JSON.stringify(result)).not.toContain('secret');
+  });
+
+  it('maps a response carrying a path or bad shape to INTERNAL', async () => {
+    for (const raw of [
+      { ok: true, data: { tracks: [{ ...track, path: 'C:\\x.mp3' }] } },
+      { ok: true, data: { tracks: [{ ...track, mediaUrl: 'file:///C:/x.mp3' }] } },
+      'nope',
+      null,
+    ]) {
+      const api = createNecroampApi(() => Promise.resolve(raw));
+      const result = (await api.library.openFiles({ multiple: false })) as { ok: boolean };
+      expect(result.ok).toBe(false);
+    }
   });
 });

@@ -21,7 +21,14 @@ describe('preload entry', () => {
     expect(exposeInMainWorld).toHaveBeenCalledTimes(1);
     const [key, api] = exposeInMainWorld.mock.calls[0] as [string, Record<string, unknown>];
     expect(key).toBe('necroamp');
-    expect(Object.keys(api)).toEqual(['app']);
+    expect(Object.keys(api)).toEqual(['app', 'library', 'playlist', 'menu']);
+    expect(Object.keys(api['library'] as object)).toEqual([
+      'openFiles',
+      'openFolder',
+      'resolveTrack',
+    ]);
+    expect(Object.keys(api['menu'] as object)).toEqual(['onCommand', 'reportPlaylistState']);
+    expect(Object.keys(api['playlist'] as object)).toEqual(['load', 'save']);
     expect(Object.keys(api['app'] as object)).toEqual(['getInfo']);
     expect(Object.isFrozen(api)).toBe(true);
   });
@@ -46,5 +53,24 @@ describe('preload entry', () => {
     await api.app.getInfo();
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.appGetInfo);
+  });
+});
+
+describe('preload entry library.openFiles', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    exposeInMainWorld.mockClear();
+    invoke.mockReset();
+  });
+
+  it('forwards the validated request as an invoke argument on library:open-files', async () => {
+    invoke.mockResolvedValue({ ok: true, data: { tracks: [] } });
+    await import('./index');
+    const [, api] = exposeInMainWorld.mock.calls[0] as [
+      string,
+      { library: { openFiles: (r: unknown) => Promise<unknown> } },
+    ];
+    await api.library.openFiles({ multiple: true });
+    expect(invoke).toHaveBeenCalledWith(IPC_CHANNELS.libraryOpenFiles, { multiple: true });
   });
 });

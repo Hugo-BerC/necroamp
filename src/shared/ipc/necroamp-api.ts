@@ -7,4 +7,28 @@ export interface NecroampApi {
   readonly app: {
     readonly getInfo: () => Promise<unknown>;
   };
+  readonly library: {
+    readonly openFiles: (request: { readonly multiple: boolean }) => Promise<unknown>;
+    readonly openFolder: () => Promise<unknown>;
+    readonly resolveTrack: (request: { readonly trackId: string }) => Promise<unknown>;
+  };
+  readonly playlist: {
+    readonly load: () => Promise<unknown>;
+    readonly save: (request: {
+      readonly items: readonly { readonly trackId: string }[];
+    }) => Promise<unknown>;
+  };
+  readonly menu: {
+    /**
+     * Subscribes to native menu commands. Each payload is validated against `menuCommandSchema`
+     * before the listener runs; invalid payloads are dropped. Returns an idempotent unsubscribe.
+     */
+    readonly onCommand: (
+      listener: (command: {
+        readonly command: 'open-files' | 'open-folder' | 'clear-playlist';
+      }) => void,
+    ) => () => void;
+    /** Reports whether the playlist has tracks. Resolves to `menuReportStateResponseSchema`. */
+    readonly reportPlaylistState: (state: { readonly hasTracks: boolean }) => Promise<unknown>;
+  };
 }
