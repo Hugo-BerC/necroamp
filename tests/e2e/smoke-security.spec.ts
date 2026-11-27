@@ -12,6 +12,8 @@ const PLATFORM_LABEL: Record<string, string> = {
   linux: 'Linux',
 };
 // Independent oracle: the frozen production policy written out, not imported from source.
+// D-A6: media://art is deliberately absent from img-src until artwork support is implemented and
+// explicitly authorized. ADR 0006 item 7 still lists it and is stale on this point.
 const PRODUCTION_CSP = [
   "default-src 'none'",
   "script-src 'self'",
@@ -25,7 +27,7 @@ const PRODUCTION_CSP = [
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "worker-src 'none'",
-  "media-src 'none'",
+  'media-src media://track',
   "manifest-src 'none'",
 ].join('; ');
 const REGIONS = ['Player', 'Playlist', 'Equalizer', 'Visualizer', 'Skins', 'GitHub (optional)'];
@@ -139,7 +141,7 @@ test.describe('sandboxed preload and live web preferences', () => {
       };
     });
     expect(shape).toEqual({
-      keys: ['app'],
+      keys: ['app', 'library'],
       appKeys: ['getInfo'],
       frozen: true,
       getInfoType: 'function',
@@ -177,6 +179,34 @@ test.describe('production CSP and app:// loading', () => {
     expect(headers.nosniff).toBe('nosniff');
   });
 
+  test('allows only self for images and only media://track for media', async ({ app }) => {
+    const csp = await app.evaluate(async ({ net }) => {
+      const res = await net.fetch('app://renderer/index.html');
+      return res.headers.get('content-security-policy') ?? '';
+    });
+    const sources = (name: string): string[] => {
+      const directive = csp.split('; ').find((d) => d.startsWith(name + ' '));
+      return directive === undefined ? [] : directive.split(' ').slice(1);
+    };
+    expect(sources('img-src')).toEqual(["'self'"]);
+    expect(sources('media-src')).toEqual(['media://track']);
+    const img = sources('img-src').join(' ');
+    for (const forbidden of [
+      'media://art',
+      'media:',
+      'data:',
+      'blob:',
+      'http:',
+      'https:',
+      'file:',
+      '*',
+    ]) {
+      expect(img, forbidden).not.toContain(forbidden);
+    }
+    expect(sources('media-src').join(' ')).not.toMatch(
+      /media:\/\/art|blob:|data:|https?:|file:|\*/,
+    );
+  });
   test('has a meta CSP without frame-ancestors, no unsafe-* and no inline script in the DOM source', async ({
     page,
   }) => {

@@ -7,4 +7,7 @@ export interface NecroampApi {
   readonly app: {
     readonly getInfo: () => Promise<unknown>;
   };
+  readonly library: {
+    readonly openFiles: (request: { readonly multiple: boolean }) => Promise<unknown>;
+  };
 }

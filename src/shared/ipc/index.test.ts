@@ -7,6 +7,12 @@ describe('shared IPC public surface', () => {
       [
         'IPC_CHANNELS',
         'IPC_ERROR_MESSAGES',
+        'MAX_TRACKS_PER_REQUEST',
+        'artworkUrlSchema',
+        'openFilesRequestSchema',
+        'openFilesResponseSchema',
+        'trackInfoSchema',
+        'trackMediaUrlSchema',
         'appInfoRequestSchema',
         'appInfoResponseSchema',
         'appInfoSchema',

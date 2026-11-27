@@ -6,7 +6,7 @@ const DEV = 'http://localhost:5173';
 const EXPECTED_PRODUCTION =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; " +
   "connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; " +
-  "frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; media-src 'none'; " +
+  "frame-ancestors 'none'; frame-src 'none'; worker-src 'none'; media-src media://track; " +
   "manifest-src 'none'";
 
 function directive(policy: string, name: string): string[] {
@@ -77,6 +77,15 @@ describe('development CSP', () => {
       false,
     );
     expect(policy.split(/[\s;]+/)).not.toContain('*');
+  });
+
+  it('production differs from the Desktop Foundation policy only in media-src (S5)', () => {
+    const previous = EXPECTED_PRODUCTION.replace('media-src media://track', "media-src 'none'");
+    const changed = EXPECTED_PRODUCTION.split('; ').filter((part) => !previous.includes(part));
+    expect(changed).toEqual(['media-src media://track']);
+    for (const forbidden of ['blob:', 'data:', '*', 'bypass']) {
+      expect(EXPECTED_PRODUCTION).not.toContain(forbidden);
+    }
   });
 
   it('keeps every other directive equal to production', () => {

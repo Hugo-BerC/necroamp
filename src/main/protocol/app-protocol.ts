@@ -14,7 +14,13 @@ export interface SchemeRegistrar {
   registerSchemesAsPrivileged(
     schemes: {
       scheme: string;
-      privileges: { standard: boolean; secure: boolean; supportFetchAPI: boolean };
+      privileges: {
+        standard: boolean;
+        secure: boolean;
+        supportFetchAPI: boolean;
+        stream?: boolean;
+        corsEnabled?: boolean;
+      };
     }[],
   ): void;
 }
@@ -30,14 +36,14 @@ export interface AssetFs {
   readFile(path: string): Promise<Uint8Array>;
 }
 
-/** Must run before the app `ready` event. */
+export const APP_SCHEME_ENTRY = Object.freeze({
+  scheme: APP_SCHEME,
+  privileges: Object.freeze({ standard: true, secure: true, supportFetchAPI: true }),
+});
+
+/** Must run before the app `ready` event. Prefer `registerPrivilegedSchemes`: Electron keeps only the last call. */
 export function registerAppScheme(registrar: SchemeRegistrar): void {
-  registrar.registerSchemesAsPrivileged([
-    {
-      scheme: APP_SCHEME,
-      privileges: { standard: true, secure: true, supportFetchAPI: true },
-    },
-  ]);
+  registrar.registerSchemesAsPrivileged([APP_SCHEME_ENTRY]);
 }
 
 export interface AppProtocolDeps {

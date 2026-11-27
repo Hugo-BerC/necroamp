@@ -1,4 +1,6 @@
 import type { Platform } from '@shared/ipc';
+import type { PlaybackErrorCode } from '@shared/audio/playback-state';
+import type { OpenFilesFailureReason } from '@renderer/stores/player-store';
 import type { AppInfoFailureReason, AppInfoStatus } from '@renderer/stores/app-info-store';
 import type { RegionId } from '@renderer/components/region-frame';
 
@@ -18,6 +20,7 @@ export const STRINGS = {
     bridge: 'Application bridge',
     audioEngine: 'Audio engine',
     audioEngineValue: 'Not implemented in this phase',
+    audioEngineReadyValue: 'Local playback',
   },
   bridgeStatus: {
     idle: 'Waiting to start',
@@ -53,6 +56,26 @@ export const STRINGS = {
     positionLabel: 'Position',
     noTrack: 'No track loaded',
     noArtist: 'Unknown',
+    file: 'File',
+    open: 'Open',
+    seek: 'Seek',
+    seekValueText: (elapsed: string, duration: string): string => `${elapsed} of ${duration}`,
+    volume: 'Volume',
+    volumeGroup: 'Volume controls',
+    mute: 'Mute',
+    playlistNote: 'Previous and Next need a playlist, which is not implemented yet.',
+    errors: {
+      UNSUPPORTED: 'This file type or encoding is not supported.',
+      CORRUPT: 'This file appears to be damaged and cannot be played.',
+      NOT_FOUND: 'The file could not be found. It may have been moved or deleted.',
+      DECODE: 'This file could not be decoded.',
+    } satisfies Record<PlaybackErrorCode, string>,
+    openFailures: {
+      unavailable: 'The application bridge is unavailable, so files cannot be opened.',
+      rejected: 'The application did not respond to the open request.',
+      'invalid-response': 'The application returned an unexpected response.',
+      'ipc-error': 'The file could not be opened.',
+    } satisfies Record<OpenFilesFailureReason, string>,
     controls: {
       previous: 'Previous',
       play: 'Play',

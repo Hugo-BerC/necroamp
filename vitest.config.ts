@@ -38,6 +38,8 @@ export default defineConfig({
         'src/main/security/trusted-origins.ts': { lines: 95, branches: 95 },
         'src/main/protocol/resolve-app-path.ts': { lines: 95, branches: 95 },
         'src/main/security/csp.ts': { lines: 95, branches: 95 },
+        'src/main/protocol/media-protocol.ts': { lines: 95, branches: 95 },
+        'src/main/library/media-registry.ts': { lines: 95, branches: 95 },
       },
     },
     projects: [

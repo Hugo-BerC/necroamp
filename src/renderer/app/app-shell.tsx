@@ -9,6 +9,8 @@ import { RegionBoundary } from '@renderer/components/region-boundary';
 import { RegionFrame } from '@renderer/components/region-frame';
 import { StatusText } from '@renderer/components/status-text';
 import type { AppInfoStore } from '@renderer/stores/app-info-store';
+import type { PlayerStore } from '@renderer/stores/player-store';
+import { PlayerStoreProvider } from '@renderer/stores/player-store-context';
 import { FOUNDATION_LAYOUT, type RegionId } from './shell-layout';
 import { STRINGS } from './strings/en';
 import { useAppInfo } from './use-app-info';
@@ -25,9 +27,11 @@ const REGION_COMPONENTS: Readonly<Record<RegionId, ComponentType>> = {
 
 export interface AppShellProps {
   readonly appInfoStore: AppInfoStore;
+  /** Omit to render the player as an inert placeholder (tests, missing engine). */
+  readonly playerStore?: PlayerStore;
 }
 
-export function AppShell({ appInfoStore }: AppShellProps) {
+export function AppShell({ appInfoStore, playerStore }: AppShellProps) {
   const { status, data, failure } = useAppInfo(appInfoStore);
   const bridgeText =
     status === 'failed' && failure !== undefined
@@ -35,7 +39,7 @@ export function AppShell({ appInfoStore }: AppShellProps) {
       : STRINGS.bridgeStatus[status];
   const tone = status === 'failed' ? 'danger' : status === 'unavailable' ? 'warning' : 'neutral';
 
-  return (
+  const shell = (
     <div className={styles.shell} data-part="shell">
       <header className={styles.header} data-part="header">
         <h1>{STRINGS.appName}</h1>
@@ -64,7 +68,11 @@ export function AppShell({ appInfoStore }: AppShellProps) {
             </div>
             <div>
               <dt>{STRINGS.header.audioEngine}</dt>
-              <dd>{STRINGS.header.audioEngineValue}</dd>
+              <dd>
+                {playerStore === undefined
+                  ? STRINGS.header.audioEngineValue
+                  : STRINGS.header.audioEngineReadyValue}
+              </dd>
             </div>
           </dl>
         </div>
@@ -87,5 +95,10 @@ export function AppShell({ appInfoStore }: AppShellProps) {
         })}
       </main>
     </div>
+  );
+  return playerStore === undefined ? (
+    shell
+  ) : (
+    <PlayerStoreProvider store={playerStore}>{shell}</PlayerStoreProvider>
   );
 }

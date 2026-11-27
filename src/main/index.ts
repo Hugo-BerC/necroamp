@@ -1,7 +1,8 @@
-import { statSync } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { BrowserWindow, Menu, app, ipcMain, protocol, session } from 'electron';
+import { Readable } from 'node:stream';
+import { BrowserWindow, Menu, app, dialog, ipcMain, protocol, session } from 'electron';
 import { APP_NAME, PRELOAD_PATH_SEGMENTS, RENDERER_ROOT_SEGMENTS } from './constants';
 import { installIpcHandlers } from './ipc/install-ipc';
 import {
@@ -15,8 +16,11 @@ import {
 } from './lifecycle/platform-policy';
 import { acquireSingleInstance, focusOrCreateWindow } from './lifecycle/single-instance';
 import { E2E_USER_DATA_ENV, resolveUserDataOverride } from './lifecycle/user-data-override';
+import { createMediaRegistry } from './library/media-registry';
 import { createLogger } from './logging/logger';
-import { installAppProtocol, registerAppScheme } from './protocol/app-protocol';
+import { installAppProtocol } from './protocol/app-protocol';
+import { installMediaProtocol } from './protocol/media-handler';
+import { registerPrivilegedSchemes } from './protocol/register-schemes';
 import { buildCsp } from './security/csp';
 import { installDevCspHook } from './security/dev-csp';
 import { resolveTrustedOrigins } from './security/trusted-origins';
@@ -56,6 +60,7 @@ const rendererRoot = path.join(app.getAppPath(), ...RENDERER_ROOT_SEGMENTS);
 
 let mainWindow: BrowserWindow | null = null;
 const disposers: (() => void)[] = [];
+const mediaRegistry = createMediaRegistry();
 
 function openMainWindow(): void {
   const window = createMainWindow({ BrowserWindow, preloadPath, target, log });
@@ -71,13 +76,14 @@ function openMainWindow(): void {
   );
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    mediaRegistry.clear();
   });
 }
 
 // 3. Single instance. A second process quits before any other work (D11).
 if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWindow))) {
   // 4. Privileged scheme registration. Must run before `ready`.
-  registerAppScheme(protocol);
+  registerPrivilegedSchemes(protocol);
 
   // 5. Process crash handlers.
   installProcessCrashHandlers(process, app, log);
@@ -108,6 +114,20 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         log,
       }),
     );
+    disposers.push(
+      installMediaProtocol(protocol, {
+        registry: mediaRegistry,
+        fs: {
+          realpath: (p) => fs.realpath(p),
+          stat: (p) => fs.stat(p),
+          openRange: (p, start, end) =>
+            Readable.toWeb(createReadStream(p, { start, end })) as ReadableStream<Uint8Array>,
+        },
+        trusted,
+        extname: path.extname,
+        log,
+      }),
+    );
     if (target.kind === 'development') {
       installDevCspHook(session.defaultSession.webRequest, target.devOrigin);
     }
@@ -119,6 +139,14 @@ if (acquireSingleInstance(app, () => focusOrCreateWindow(mainWindow, openMainWin
         trusted,
         isRegisteredSender: (sender) => mainWindow !== null && sender === mainWindow.webContents,
         log,
+        // Resolved at call time so a test can replace dialog.showOpenDialog.
+        showOpenDialog: (options) =>
+          mainWindow === null
+            ? dialog.showOpenDialog(options as Electron.OpenDialogOptions)
+            : dialog.showOpenDialog(mainWindow, options as Electron.OpenDialogOptions),
+        fs,
+        path,
+        registry: mediaRegistry,
       }),
     );
     installAppMenu(Menu, { platform: process.platform, isDevRun });

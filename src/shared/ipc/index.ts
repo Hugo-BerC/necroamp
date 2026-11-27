@@ -20,3 +20,14 @@ export {
   type Platform,
 } from './app-info';
 export type { NecroampApi } from './necroamp-api';
+export {
+  MAX_TRACKS_PER_REQUEST,
+  artworkUrlSchema,
+  openFilesRequestSchema,
+  openFilesResponseSchema,
+  trackInfoSchema,
+  trackMediaUrlSchema,
+  type OpenFilesRequest,
+  type OpenFilesResponse,
+  type TrackInfo,
+} from './library';
