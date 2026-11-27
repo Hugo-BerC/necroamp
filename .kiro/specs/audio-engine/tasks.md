@@ -35,9 +35,10 @@ Legend: `[ ]` not done, `[x]` done. Agents never tick a human gate.
 
 ## Human gates (not done, human only)
 - [ ] H.1 Human review confirming ADR 0006 (open decisions 4 and 5). The ADR is accepted provisionally only.
-- [ ] H.2 Human listening confirmation that audio is audible and correct in each format.
+- [ ] H.2 Human listening confirmation that audio is audible and correct in each format. PARTIAL: the maintainer reported audible playback and working equalization during manual acceptance testing. Per-format listening was not reported, so this stays open.
 - [ ] H.3 Human visual check of spectrum, waveform and EQ.
-- [ ] H.4 Human review and approval of the PR. Merge only with explicit authorization naming this PR.
+- [x] H.4 Human merge authorization: the maintainer explicitly authorized merging PR #7 by name. This records the authorization only; it does not confirm H.1 or H.3.
 
 
 > As-built update: see [as-built.md](as-built.md) for deviations, deferred items (C4/C.3) and final status.
+

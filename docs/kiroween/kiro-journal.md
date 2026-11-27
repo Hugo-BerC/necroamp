@@ -314,3 +314,7 @@ Fresh on Windows x64 (Node 24.22.3, pnpm 10.34.9): typecheck, lint, format:check
 ### 17.4 AE-02 resolution
 - Fixed by restricting persisted playlist restoration to valid local absolute paths (desktop-engineer); focused security review APPROVED_WITH_LIMITATIONS with AE-02 RESOLVED and Info items AE-11 to AE-13. Network-hosted tracks are not restored automatically (outside MVP).
 
+
+### 17.5 Merge authorization
+- The maintainer confirmed audible playback, working equalization and automatic track loading after import, and explicitly authorized merging PR #7. Other human checks (H.1, H.3, per-format listening, remaining playlist behaviors) were not confirmed and are recorded as open in docs/engineering/backlog.md (H-AUD-1). Accepted limitations AE-11, AE-12, AE-13 and the unresolved flaky E2E failure (FLAKE-1) were added to the backlog.
+
